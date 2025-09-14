@@ -20,6 +20,7 @@
 
   <dependencyManagement>
     <dependencies>
+      <!-- JUnit 5 BOM for test dependencies -->
       <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
@@ -27,6 +28,14 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      
+      <!-- Internal module dependencies -->
+      <dependency>
+        <groupId>com.remast</groupId>
+        <artifactId>marga</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
     </dependencies>
   </dependencyManagement>
 

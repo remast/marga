@@ -11,6 +11,7 @@ class ResponseTest {
         
         assertEquals("Hello World", response.getBody());
         assertEquals(200, response.getStatusCode());
+        assertEquals(MediaType.TEXT_PLAIN, response.getMediaType());
     }
 
     @Test
@@ -19,6 +20,7 @@ class ResponseTest {
         
         assertEquals("Error", response.getBody());
         assertEquals(500, response.getStatusCode());
+        assertEquals(MediaType.TEXT_PLAIN, response.getMediaType());
     }
 
     @Test
@@ -27,6 +29,7 @@ class ResponseTest {
         
         assertEquals("Default OK", response.getBody());
         assertEquals(200, response.getStatusCode());
+        assertEquals(MediaType.TEXT_PLAIN, response.getMediaType());
     }
 
     @Test
@@ -74,6 +77,7 @@ class ResponseTest {
         
         assertNull(response.getBody());
         assertEquals(200, response.getStatusCode());
+        assertEquals(MediaType.TEXT_PLAIN, response.getMediaType());
     }
 
     @Test
@@ -82,5 +86,53 @@ class ResponseTest {
         
         assertEquals("", response.getBody());
         assertEquals(204, response.getStatusCode());
+        assertEquals(MediaType.TEXT_PLAIN, response.getMediaType());
+    }
+
+    @Test
+    void constructorWithMediaType() {
+        var response = new Response("JSON data", HttpStatus.OK, MediaType.APPLICATION_JSON);
+        
+        assertEquals("JSON data", response.getBody());
+        assertEquals(200, response.getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON, response.getMediaType());
+    }
+
+    @Test
+    void constructorWithStatusCodeAndMediaType() {
+        var response = new Response("HTML content", 200, MediaType.TEXT_HTML);
+        
+        assertEquals("HTML content", response.getBody());
+        assertEquals(200, response.getStatusCode());
+        assertEquals(MediaType.TEXT_HTML, response.getMediaType());
+    }
+
+    @Test
+    void staticFactoryMethodsWithMediaType() {
+        var jsonResponse = Response.json("{\"message\": \"Hello\"}");
+        assertEquals("{\"message\": \"Hello\"}", jsonResponse.getBody());
+        assertEquals(200, jsonResponse.getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON, jsonResponse.getMediaType());
+
+        var htmlResponse = Response.html("<h1>Hello World</h1>");
+        assertEquals("<h1>Hello World</h1>", htmlResponse.getBody());
+        assertEquals(200, htmlResponse.getStatusCode());
+        assertEquals(MediaType.TEXT_HTML, htmlResponse.getMediaType());
+
+        var okWithMediaType = Response.ok("Custom content", MediaType.TEXT_CSS);
+        assertEquals("Custom content", okWithMediaType.getBody());
+        assertEquals(200, okWithMediaType.getStatusCode());
+        assertEquals(MediaType.TEXT_CSS, okWithMediaType.getMediaType());
+    }
+
+    @Test
+    void customMediaTypeInResponse() {
+        var customMediaType = new MediaType("application/custom");
+        var response = new Response("Custom content", HttpStatus.OK, customMediaType);
+        
+        assertEquals("Custom content", response.getBody());
+        assertEquals(200, response.getStatusCode());
+        assertEquals(customMediaType, response.getMediaType());
+        assertEquals("application/custom", response.getMediaType().getValue());
     }
 }

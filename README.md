@@ -30,8 +30,7 @@ public class App {
 
         router.GET("/api/users", request -> 
             Response.ok("{\"users\": []}")
-                    .mediaType(APPLICATION_JSON)
-        );
+                    .mediaType(APPLICATION_JSON));
             
         // Parameterized routes
         router.GET("/users/${id}", request -> {

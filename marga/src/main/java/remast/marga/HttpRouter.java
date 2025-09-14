@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 
 
 import java.util.Comparator;
+import remast.marga.handlers.DefaultNotFoundHandler;
 
 public class HttpRouter {
     private static final Logger logger = Logger.getLogger(HttpRouter.class.getName());
@@ -50,14 +51,15 @@ public class HttpRouter {
             isExactMatch = true;
         }
         
-        // Check parameterized routes and compare with exact match
-        for (var route : parameterizedRoutes) {
-            if (route.matches(path)) {
-                var pattern = route.getPattern();
-                if (pattern != null && pattern.length() > longestLength) {
-                    longestMatch = route;
-                    longestLength = pattern.length();
-                    isExactMatch = false;
+        // Check parameterized routes only if no exact match was found
+        if (!isExactMatch) {
+            for (var route : parameterizedRoutes) {
+                if (route.matches(path)) {
+                    var pattern = route.getPattern();
+                    if (pattern != null && pattern.length() > longestLength) {
+                        longestMatch = route;
+                        longestLength = pattern.length();
+                    }
                 }
             }
         }

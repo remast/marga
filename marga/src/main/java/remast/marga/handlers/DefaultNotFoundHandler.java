@@ -1,4 +1,9 @@
-package remast.marga;
+package remast.marga.handlers;
+
+import remast.marga.RequestHandler;
+import remast.marga.Request;
+import remast.marga.Response;
+import remast.marga.HttpStatus;
 
 public class DefaultNotFoundHandler implements RequestHandler {
     @Override

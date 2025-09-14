@@ -1,10 +1,11 @@
 ---
-description:
+description: Java Basic Rules
 globs: *.java
 alwaysApply: true
 ---
 
 ## Java Basics
-* Use the var keyword.
+* Use the `var` keyword.
 * Use modern java functionality which is 21.
 * Only use comments if necessary and for things that are not clear from the naming used.
+* Unit tests should not be prefixed with "test".

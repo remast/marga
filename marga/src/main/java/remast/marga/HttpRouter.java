@@ -108,6 +108,63 @@ public class HttpRouter {
         addRoute("GET", path, handler, description);
     }
     
+    // HTTP method-specific convenience methods
+    public void GET(String path, RequestHandler handler) {
+        addRoute("GET", path, handler, null);
+    }
+    
+    public void GET(String path, RequestHandler handler, String description) {
+        addRoute("GET", path, handler, description);
+    }
+    
+    public void POST(String path, RequestHandler handler) {
+        addRoute("POST", path, handler, null);
+    }
+    
+    public void POST(String path, RequestHandler handler, String description) {
+        addRoute("POST", path, handler, description);
+    }
+    
+    public void PUT(String path, RequestHandler handler) {
+        addRoute("PUT", path, handler, null);
+    }
+    
+    public void PUT(String path, RequestHandler handler, String description) {
+        addRoute("PUT", path, handler, description);
+    }
+    
+    public void DELETE(String path, RequestHandler handler) {
+        addRoute("DELETE", path, handler, null);
+    }
+    
+    public void DELETE(String path, RequestHandler handler, String description) {
+        addRoute("DELETE", path, handler, description);
+    }
+    
+    public void PATCH(String path, RequestHandler handler) {
+        addRoute("PATCH", path, handler, null);
+    }
+    
+    public void PATCH(String path, RequestHandler handler, String description) {
+        addRoute("PATCH", path, handler, description);
+    }
+    
+    public void HEAD(String path, RequestHandler handler) {
+        addRoute("HEAD", path, handler, null);
+    }
+    
+    public void HEAD(String path, RequestHandler handler, String description) {
+        addRoute("HEAD", path, handler, description);
+    }
+    
+    public void OPTIONS(String path, RequestHandler handler) {
+        addRoute("OPTIONS", path, handler, null);
+    }
+    
+    public void OPTIONS(String path, RequestHandler handler, String description) {
+        addRoute("OPTIONS", path, handler, description);
+    }
+    
     public Map<String, Route> getRoutes() {
         var allRoutes = new HashMap<String, Route>();
         allRoutes.putAll(exactRoutes);

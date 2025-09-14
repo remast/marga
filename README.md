@@ -24,14 +24,14 @@ public class App {
         var router = new HttpRouter();
         
         // Simple routes
-        router.addRoute("GET", "/", request -> 
+        router.GET("/", request -> 
             Response.ok("<h1>Welcome to Marga!</h1>"));
 
-        router.addRoute("GET", "/api/users", request -> 
+        router.GET("/api/users", request -> 
             Response.ok("{\"users\": []}"));
             
         // Parameterized routes
-        router.addRoute("GET", "/users/${id}", request -> {
+        router.GET("/users/${id}", request -> {
             var userId = request.pathParam("id");
             return Response.ok("User ID: " + userId);
         });

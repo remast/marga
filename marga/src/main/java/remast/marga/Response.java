@@ -1,9 +1,9 @@
 package remast.marga;
 
 public class Response {
-    private final String body;
-    private final int statusCode;
-    private final MediaType mediaType;
+    private String body;
+    private int statusCode;
+    private MediaType mediaType;
     
     public Response(String body, HttpStatus status) {
         this(body, status.getCode(), MediaType.TEXT_PLAIN);
@@ -25,6 +25,11 @@ public class Response {
         this.body = body;
         this.statusCode = statusCode;
         this.mediaType = mediaType;
+    }
+
+    public Response mediaType(MediaType mediaType) {
+        this.mediaType = mediaType;
+        return this;
     }
     
     public String getBody() {

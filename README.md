@@ -18,6 +18,7 @@ Add Marga to your project and start building APIs in minutes:
 
 ```java
 import remast.marga.*;
+import static remast.marga.MediaType.*;
 
 public class App {
     public static void main(String[] args) throws IOException {
@@ -28,7 +29,9 @@ public class App {
             Response.ok("<h1>Welcome to Marga!</h1>"));
 
         router.GET("/api/users", request -> 
-            Response.ok("{\"users\": []}"));
+            Response.ok("{\"users\": []}")
+                    .mediaType(APPLICATION_JSON)
+        );
             
         // Parameterized routes
         router.GET("/users/${id}", request -> {

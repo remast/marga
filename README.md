@@ -89,7 +89,7 @@ Marga is designed with simplicity and performance in mind:
 <dependency>
     <groupId>remast</groupId>
     <artifactId>marga-router</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>0.0.1-SNAPSHOT</version>
 </dependency>
 ```
 

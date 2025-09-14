@@ -26,7 +26,7 @@ public class App {
         // Simple routes
         router.addRoute("GET", "/", request -> 
             Response.ok("<h1>Welcome to Marga!</h1>"));
-            
+
         router.addRoute("GET", "/api/users", request -> 
             Response.ok("{\"users\": []}"));
             
@@ -36,43 +36,13 @@ public class App {
             return Response.ok("User ID: " + userId);
         });
         
-        // Start the server
+        // Run the server
         router.run();
     }
 }
 ```
 
 That's it! Your HTTP server is running on `http://localhost:8080` with virtual thread support out of the box.
-
-## 🎯 Features
-
-### Simple Route Registration
-```java
-// Exact routes
-router.addRoute("GET", "/api/status", handler);
-router.addRoute("POST", "/api/users", handler);
-
-// Parameterized routes with path variables
-router.addRoute("GET", "/users/${id}", handler);
-router.addRoute("GET", "/posts/${category}/${slug}", handler);
-```
-
-### Clean Request Handling
-```java
-public class UserHandler implements RequestHandler {
-    @Override
-    public Response handle(Request request) {
-        var userId = request.pathParam("id");
-        var method = request.getMethod();
-        
-        return switch (method) {
-            case "GET" -> Response.ok("User: " + userId);
-            case "PUT" -> Response.ok("Updated user: " + userId);
-            default -> Response.methodNotAllowed("Method not supported");
-        };
-    }
-}
-```
 
 ## 🏗️ Architecture
 

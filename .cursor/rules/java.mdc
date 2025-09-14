@@ -1,0 +1,10 @@
+---
+description:
+globs: *.java
+alwaysApply: true
+---
+
+## Java Basics
+* Use the var keyword.
+* Use modern java functionality which is 21.
+* Only use comments if necessary and for things that are not clear from the naming used.

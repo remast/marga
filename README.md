@@ -69,17 +69,13 @@ Marga is designed with simplicity and performance in mind:
 - Java 21 or higher
 - No external dependencies
 
-## 🎮 Example Applications
+## 🎮 Example Application
 
-Check out the `sample-app` directory for complete examples including:
+Check out the `example` directory for complete examples including:
 - Basic routing
 - Parameterized routes
 - Custom handlers
 - Error handling
-
-## 🤝 Contributing
-
-Marga is built for the community. Contributions are welcome! Whether it's bug fixes, new features, or documentation improvements, we'd love to see your pull requests.
 
 ---
 

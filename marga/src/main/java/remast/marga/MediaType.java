@@ -14,7 +14,7 @@ public record MediaType(String value) {
     public static final MediaType IMAGE_SVG = new MediaType("image/svg+xml");
 
     public MediaType {
-        if (value == null || value.isEmpty()) {
+        if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException("Media type value cannot be null or empty");
         }
         value = value.trim();

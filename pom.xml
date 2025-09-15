@@ -9,6 +9,18 @@
   <version>0.0.1</version>
   <packaging>pom</packaging>
 
+  <name>Marga HTTP Router</name>  
+  <url>https://github.com/remast/marga</url>
+  <ciManagement>
+    <system>github</system>
+    <url>https://github.com/remast/marga/actions</url>
+  </ciManagement>
+  <scm>
+    <connection>scm:git:git@github.com:remast/marga.git</connection>
+    <developerConnection>scm:git:git@github.com:remast/marga.git</developerConnection>
+    <url>https://github.com/remast/marga</url>
+  </scm>
+
   <modules>
     <module>marga</module>
     <module>example</module>
@@ -151,4 +163,21 @@
       </build>
     </profile>
   </profiles>
+  <developers>
+    <developer>
+      <name>Jan Stamer</name>
+      <id>remast</id>
+      <roles>
+        <role>Owner</role>
+      </roles>
+    </developer>
+  </developers>
+  <licenses>
+    <license>
+        <name>The Apache License, Version 2.0</name>
+        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        <distribution>repo</distribution>
+        <comments>A business-friendly OSS license</comments>
+    </license>
+  </licenses>
 </project>

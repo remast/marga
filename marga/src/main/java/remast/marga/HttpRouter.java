@@ -22,6 +22,7 @@ public class HttpRouter {
     private final RequestHandler notFoundHandler;
     private final Config config;
     private final ExecutorService executor;
+    private final List<Middleware> middleware;
     
     public HttpRouter() {
         this.exactRoutes = new HashMap<>();
@@ -29,6 +30,7 @@ public class HttpRouter {
         this.notFoundHandler = new DefaultNotFoundHandler();
         this.config = new Config();
         this.executor = Executors.newVirtualThreadPerTaskExecutor();
+        this.middleware = new ArrayList<>();
         
         // Add shutdown hook to properly close the virtual thread executor
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
@@ -68,11 +70,12 @@ public class HttpRouter {
             if (!isExactMatch) {
                 longestMatch.extractParameters(path, request);
             }
-            return longestMatch.getHandler().handle(request);
+            var handler = longestMatch.getHandler();
+            return applyMiddleware(handler).handle(request);
         }
         
         // No route found
-        return notFoundHandler.handle(request);
+        return applyMiddleware(notFoundHandler).handle(request);
     }
     
     public void addRoute(String method, String path, RequestHandler handler) {
@@ -163,6 +166,27 @@ public class HttpRouter {
     
     public void OPTIONS(String path, RequestHandler handler, String description) {
         addRoute("OPTIONS", path, handler, description);
+    }
+    
+    /**
+     * Add middleware to the router. Middleware will be applied in the order they are added.
+     * @param middleware The middleware to add
+     */
+    public void use(Middleware middleware) {
+        this.middleware.add(middleware);
+    }
+    
+    /**
+     * Apply all registered middleware to a handler in the order they were added.
+     * @param handler The original handler
+     * @return A new handler wrapped with all middleware
+     */
+    private RequestHandler applyMiddleware(RequestHandler handler) {
+        var wrappedHandler = handler;
+        for (var mw : middleware) {
+            wrappedHandler = mw.apply(wrappedHandler);
+        }
+        return wrappedHandler;
     }
     
     public Map<String, Route> getRoutes() {

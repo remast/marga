@@ -3,10 +3,16 @@ package remast;
 import java.io.IOException;
 
 import remast.marga.HttpRouter;
+import remast.marga.middleware.LoggingMiddleware;
+import remast.marga.middleware.TimingMiddleware;
 
 public class App {    
     public static void main(String[] args) throws IOException {
         var router = new HttpRouter();
+        
+        // Add middleware (order matters - they will be applied in the order added)
+        router.use(new LoggingMiddleware());
+        router.use(new TimingMiddleware());
         
         registerRoutes(router);        
         router.printRouteDescriptions();

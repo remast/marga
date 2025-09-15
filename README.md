@@ -51,7 +51,7 @@ That's it! Your HTTP server is running on `http://localhost:8080` with virtual t
 Marga is designed with simplicity and performance in mind:
 
 - **Parameterized Routes** - Efficient pattern matching with path variables
-- **Virtual Threads** - Non-blocking I/O with Java 21's virtual threads
+- **Virtual Threads** - Fast and scalable with Java 21's virtual threads
 - **Minimal Memory Footprint** - No unnecessary abstractions or overhead
 
 ## 📦 Installation

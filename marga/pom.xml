@@ -10,6 +10,7 @@
   </parent>
 
   <artifactId>marga</artifactId>
+  <name>Marga HTTP Router</name>
   <description>HTTP Router library for Java applications</description>
 
   <dependencies>

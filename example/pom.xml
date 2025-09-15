@@ -10,6 +10,7 @@
   </parent>
 
   <artifactId>example-app</artifactId>
+  <name>Marga Example Application</name>
   <description>Sample application demonstrating the marga router</description>
 
   <dependencies>

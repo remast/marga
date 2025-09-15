@@ -8,6 +8,7 @@ public record MediaType(String value) {
     public static final MediaType APPLICATION_JSON = new MediaType("application/json");
     public static final MediaType APPLICATION_XML = new MediaType("application/xml");
     public static final MediaType APPLICATION_PDF = new MediaType("application/pdf");
+    public static final MediaType APPLICATION_GZIP = new MediaType("application/gzip");
     public static final MediaType IMAGE_JPEG = new MediaType("image/jpeg");
     public static final MediaType IMAGE_PNG = new MediaType("image/png");
     public static final MediaType IMAGE_GIF = new MediaType("image/gif");

@@ -1,9 +1,14 @@
 package remast.marga;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class Response {
     private String body;
+    private byte[] bodyBytes;
     private int statusCode;
     private MediaType mediaType;
+    private Map<String, String> headers;
     
     public Response(String body, HttpStatus status) {
         this(body, status.getCode(), MediaType.TEXT_PLAIN);
@@ -23,8 +28,18 @@ public class Response {
     
     public Response(String body, int statusCode, MediaType mediaType) {
         this.body = body;
+        this.bodyBytes = null;
         this.statusCode = statusCode;
         this.mediaType = mediaType;
+        this.headers = new HashMap<>();
+    }
+    
+    public Response(byte[] body, int statusCode, MediaType mediaType) {
+        this.body = null;
+        this.bodyBytes = body;
+        this.statusCode = statusCode;
+        this.mediaType = mediaType;
+        this.headers = new HashMap<>();
     }
 
     public Response mediaType(MediaType mediaType) {
@@ -33,7 +48,25 @@ public class Response {
     }
     
     public String getBody() {
-        return body;
+        if (body != null) {
+            return body;
+        } else if (bodyBytes != null) {
+            return new String(bodyBytes);
+        }
+        return null;
+    }
+    
+    public byte[] getBodyBytes() {
+        if (bodyBytes != null) {
+            return bodyBytes;
+        } else if (body != null) {
+            return body.getBytes();
+        }
+        return null;
+    }
+    
+    public boolean isBinary() {
+        return bodyBytes != null;
     }
     
     public int getStatusCode() {
@@ -42,6 +75,19 @@ public class Response {
     
     public MediaType getMediaType() {
         return mediaType;
+    }
+    
+    public Map<String, String> getHeaders() {
+        return new HashMap<>(headers);
+    }
+    
+    public Response header(String name, String value) {
+        this.headers.put(name, value);
+        return this;
+    }
+    
+    public String getHeader(String name) {
+        return this.headers.get(name);
     }
     
     public static Response ok(String body) {

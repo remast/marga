@@ -51,7 +51,7 @@ public class GzipCompressionMiddleware implements Middleware {
                         
                         // Only use compression if it actually reduces size significantly
                         if (compressionRatio < 0.9) {
-                            logger.info(String.format("Compressed response from %d to %d bytes (%.1f%% reduction)", 
+                            logger.fine(String.format("Compressed response from %d to %d bytes (%.1f%% reduction)", 
                                 originalSize, compressedBody.length, (1 - compressionRatio) * 100));
                             
                             return new Response(compressedBody, response.getStatusCode(), response.getMediaType())

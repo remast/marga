@@ -59,7 +59,7 @@ Marga is designed with simplicity and performance in mind:
 ### Maven
 ```xml
 <dependency>
-    <groupId>remast</groupId>
+    <groupId>io.github.remast</groupId>
     <artifactId>marga-router</artifactId>
     <version>0.0.1</version>
 </dependency>

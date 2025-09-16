@@ -6,7 +6,7 @@
 
   <groupId>io.github.remast</groupId>
   <artifactId>marga-parent</artifactId>
-  <version>0.0.1</version>
+  <version>0.0.2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Marga HTTP Router</name>

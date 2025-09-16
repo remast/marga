@@ -1,40 +1,26 @@
-### Freddy BBQ HTTP Server - Sample Requests
-### Server running on http://localhost:8080
+### Marga Sample HTTP Server Requests
 
 ### 1. Root endpoint - Homepage
 GET http://localhost:8080/
-Accept: text/html
-
-###
 
 ### 2. Hello endpoint - Greeting
 GET http://localhost:8080/hello
-Accept: text/html
-
-###
 
 ### 3. API endpoint - API information
 GET http://localhost:8080/api
-Accept: text/html
-
-###
 
 ### 4. API endpoint with different HTTP methods
 POST http://localhost:8080/api
 Content-Type: application/json
-Accept: text/html
 
 {
   "message": "Test POST Request",
   "timestamp": "2024-01-01T12:00:00"
 }
 
-###
-
 ### 5. API endpoint with PUT method
 PUT http://localhost:8080/api
 Content-Type: application/json
-Accept: text/html
 
 {
   "id": 1,
@@ -42,61 +28,30 @@ Accept: text/html
   "description": "A delicious BBQ dish"
 }
 
-###
 
 ### 6. API endpoint with DELETE method
 DELETE http://localhost:8080/api
 Accept: text/html
 
-###
-
 ### 7. Test with different Accept headers
 GET http://localhost:8080/api
 Accept: application/json
-
-###
 
 ### 8. Test with User-Agent header
 GET http://localhost:8080/hello
 User-Agent: FreddyBBQ-Client/1.0
 Accept: text/html
 
-###
-
 ### 9. Test with custom headers
 GET http://localhost:8080/api
 X-Custom-Header: FreddyBBQ-Test
 X-Request-ID: 12345
-Accept: text/html
-
-###
 
 ### 10. Test root page with different Accept types
 GET http://localhost:8080/
-Accept: text/plain
-
-###
 
 ### 11. Test with query parameters (if implemented)
 GET http://localhost:8080/api?name=Freddy&type=bbq
-Accept: text/html
-
-###
 
 ### 12. Test with fragment (if implemented)
 GET http://localhost:8080/hello#section1
-Accept: text/html
-
-###
-
-### Instructions:
-### 1. Start the server: mvn compile exec:java -Dexec.mainClass="crossnative.App"
-### 2. Wait until "HTTP Server running on http://localhost:8080" is displayed
-### 3. Execute the requests above by clicking "Send Request"
-### 4. Observe the responses in the browser or HTTP client
-
-### Expected responses:
-### - All endpoints return HTML
-### - Status Code: 200 OK
-### - Content-Type: text/html; charset=UTF-8
-### - The /api endpoint shows HTTP method, path and timestamp

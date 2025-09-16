@@ -112,59 +112,59 @@ public class HttpRouter {
     }
     
     // HTTP method-specific convenience methods
-    public void GET(String path, RequestHandler handler) {
+    public void GET(String path, RequestHandler handler) { // NOSONAR
         addRoute("GET", path, handler, null);
     }
     
-    public void GET(String path, RequestHandler handler, String description) {
+    public void GET(String path, RequestHandler handler, String description) { // NOSONAR
         addRoute("GET", path, handler, description);
     }
     
-    public void POST(String path, RequestHandler handler) {
+    public void POST(String path, RequestHandler handler) { // NOSONAR
         addRoute("POST", path, handler, null);
     }
     
-    public void POST(String path, RequestHandler handler, String description) {
+    public void POST(String path, RequestHandler handler, String description) { // NOSONAR
         addRoute("POST", path, handler, description);
     }
     
-    public void PUT(String path, RequestHandler handler) {
+    public void PUT(String path, RequestHandler handler) { // NOSONAR
         addRoute("PUT", path, handler, null);
     }
     
-    public void PUT(String path, RequestHandler handler, String description) {
+    public void PUT(String path, RequestHandler handler, String description) { // NOSONAR
         addRoute("PUT", path, handler, description);
     }
     
-    public void DELETE(String path, RequestHandler handler) {
+    public void DELETE(String path, RequestHandler handler) { // NOSONAR
         addRoute("DELETE", path, handler, null);
     }
     
-    public void DELETE(String path, RequestHandler handler, String description) {
+    public void DELETE(String path, RequestHandler handler, String description) { // NOSONAR
         addRoute("DELETE", path, handler, description);
     }
     
-    public void PATCH(String path, RequestHandler handler) {
+    public void PATCH(String path, RequestHandler handler) { // NOSONAR
         addRoute("PATCH", path, handler, null);
     }
     
-    public void PATCH(String path, RequestHandler handler, String description) {
+    public void PATCH(String path, RequestHandler handler, String description) { // NOSONAR
         addRoute("PATCH", path, handler, description);
     }
     
-    public void HEAD(String path, RequestHandler handler) {
+    public void HEAD(String path, RequestHandler handler) { // NOSONAR
         addRoute("HEAD", path, handler, null);
     }
     
-    public void HEAD(String path, RequestHandler handler, String description) {
+    public void HEAD(String path, RequestHandler handler, String description) { // NOSONAR
         addRoute("HEAD", path, handler, description);
     }
     
-    public void OPTIONS(String path, RequestHandler handler) {
+    public void OPTIONS(String path, RequestHandler handler) { // NOSONAR
         addRoute("OPTIONS", path, handler, null);
     }
     
-    public void OPTIONS(String path, RequestHandler handler, String description) {
+    public void OPTIONS(String path, RequestHandler handler, String description) { // NOSONAR
         addRoute("OPTIONS", path, handler, description);
     }
     
@@ -189,9 +189,8 @@ public class HttpRouter {
         return wrappedHandler;
     }
     
-    public Map<String, Route> getRoutes() {
-        var allRoutes = new HashMap<String, Route>();
-        allRoutes.putAll(exactRoutes);
+    Map<String, Route> getRoutes() {
+        var allRoutes = new HashMap<String, Route>(exactRoutes);
         
         // Add parameterized routes with their patterns as keys
         for (var route : parameterizedRoutes) {
@@ -200,30 +199,6 @@ public class HttpRouter {
         }
         
         return allRoutes;
-    }
-    
-    public void printRouteListings() {
-        logger.info("Registered routes:");
-        
-        // Print exact routes
-        for (var entry : exactRoutes.entrySet()) {
-            var routeKey = entry.getKey();
-            var parts = routeKey.split(" ", 2);
-            if (parts.length == 2) {
-                var method = parts[0];
-                var path = parts[1];
-                var route = entry.getValue();
-                var description = route.getDescriptionOrDefault();
-                logger.info(String.format("  %s %s - %s", method, path, description));
-            }
-        }
-        
-        // Print parameterized routes
-        for (var route : parameterizedRoutes) {
-            var pattern = route.getPattern();
-            var description = route.getDescriptionOrDefault();
-            logger.info(String.format("  GET %s - %s", pattern, description));
-        }
     }
     
     public void run() throws IOException {
@@ -238,44 +213,40 @@ public class HttpRouter {
     }
     
     private void handleSocketRequest(Socket clientSocket) {
-        try (var in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-             var out = new PrintWriter(clientSocket.getOutputStream(), true)) {
-            
-            // Read the HTTP request
-            var requestLine = in.readLine();
-            if (requestLine == null) return;
-            
-            var requestParts = requestLine.split(" ");
-            if (requestParts.length < 2) return;
-            
-            var method = requestParts[0];
-            var path = requestParts[1];
-            
-            // Read headers (we'll skip them for simplicity)
-            String header;
-            while ((header = in.readLine()) != null && !header.isEmpty()) {
-                // Skip headers
-            }
-            
-            // Handle the request based on path
-            var response = handleRequest(method, path);
-            
-            // Send HTTP response
-            out.println("HTTP/1.1 " + response.getStatusCode());
-            out.println("Content-Type: text/html; charset=UTF-8");
-            out.println("Content-Length: " + response.getBody().getBytes(StandardCharsets.UTF_8).length);
-            out.println("Connection: close");
-            out.println();
-            out.println(response.getBody());
-            
-        } catch (IOException e) {
-            System.err.println("Error handling request: " + e.getMessage());
-        } finally {
+        try (clientSocket; var in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream())); var out = new PrintWriter(clientSocket.getOutputStream(), true)) {
             try {
-                clientSocket.close();
+                // Read the HTTP request
+                var requestLine = in.readLine();
+                if (requestLine == null) return;
+
+                var requestParts = requestLine.split(" ");
+                if (requestParts.length < 2) return;
+
+                var method = requestParts[0];
+                var path = requestParts[1];
+
+                // Read headers (we'll skip them for simplicity)
+                String header;
+                while ((header = in.readLine()) != null && !header.isEmpty()) {
+                    // Skip headers
+                }
+
+                // Handle the request based on path
+                var response = handleRequest(method, path);
+
+                // Send HTTP response
+                out.println("HTTP/1.1 " + response.getStatusCode());
+                out.println(String.format("Content-Type: %s; charset=UTF-8", response.getMediaType().getValue()));
+                out.println("Content-Length: " + response.getBody().getBytes(StandardCharsets.UTF_8).length);
+                out.println("Connection: close");
+                out.println();
+                out.println(response.getBody());
+
             } catch (IOException e) {
-                System.err.println("Error closing socket: " + e.getMessage());
+                System.err.println("Error handling request: " + e.getMessage());
             }
+        } catch (IOException e) {
+            System.err.println("Error closing socket: " + e.getMessage());
         }
     }
 

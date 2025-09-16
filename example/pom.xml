@@ -6,12 +6,12 @@
   <parent>
     <groupId>io.github.remast</groupId>
     <artifactId>marga-parent</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2-SNAPSHOT</version>
   </parent>
 
-  <artifactId>example-app</artifactId>
+  <artifactId>example</artifactId>
   <name>Marga Example Application</name>
-  <description>Sample application demonstrating the marga router</description>
+  <description>Example application demonstrating the marga router</description>
 
   <dependencies>
     <dependency>

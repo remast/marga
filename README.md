@@ -48,7 +48,7 @@ That's it! Your HTTP server is running on `http://localhost:8080` with virtual t
 
 ## 🔧 Middleware Support
 
-Marga includes powerful middleware capabilities with a functional approach inspired by Go Chi router:
+Marga includes powerful middleware capabilities with a functional approach:
 
 ```java
 var router = new HttpRouter();

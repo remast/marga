@@ -46,6 +46,35 @@ public class App {
 
 That's it! Your HTTP server is running on `http://localhost:8080` with virtual thread support out of the box.
 
+## 🔧 Middleware Support
+
+Marga includes powerful middleware capabilities with a functional approach inspired by Go Chi router:
+
+```java
+var router = new HttpRouter();
+
+// Add built-in middleware
+router.use(LoggingMiddleware.create());
+
+// Authentication middleware
+router.use(handler -> request -> {
+    var authHeader = request.getHeader("Authorization");
+    if (authHeader == null) {
+        return Response.unauthorized("Missing authorization");
+    }
+    return handler.handle(request);
+});
+
+router.GET("/api/protected", request -> Response.ok("Secret data"));
+```
+
+**Built-in middleware includes:**
+- 📝 **LoggingMiddleware** - Request/response logging
+- ⏱️ **TimingMiddleware** - Performance timing
+- 🗜️ **GzipCompressionMiddleware** - Response compression
+
+See [MIDDLEWARE.md](MIDDLEWARE.md) for complete middleware documentation.
+
 ## 🏗️ Architecture
 
 Marga is designed with simplicity and performance in mind:

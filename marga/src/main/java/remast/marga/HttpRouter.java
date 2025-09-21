@@ -45,6 +45,11 @@ public class HttpRouter {
         return handleRequestInternal(request);
     }
     
+    public Response handleRequest(String method, String path, Map<String, String> headers, Map<String, String> queryParams) {
+        var request = new Request(method, path, headers, queryParams);
+        return handleRequestInternal(request);
+    }
+    
     private Response handleRequestInternal(Request request) {
         var method = request.getMethod();
         var path = request.getPath();
@@ -254,12 +259,15 @@ public class HttpRouter {
                 if (requestParts.length < 2) return;
 
                 var method = requestParts[0];
-                var path = requestParts[1];
+                var fullPath = requestParts[1];
+                
+                var path = extractPath(fullPath);
+                var queryParams = parseQueryParameters(fullPath);
 
                 var headers = parseHeaders(in);
 
                 // Handle the request based on path
-                var response = handleRequest(method, path, headers);
+                var response = handleRequest(method, path, headers, queryParams);
 
                 // Send HTTP response
                 out.println("HTTP/1.1 " + response.getStatusCode());
@@ -308,6 +316,8 @@ public class HttpRouter {
         executor.shutdown();
     }
     
+    // ===== HTTP Request Parsing Methods =====
+    
     /**
      * Parses HTTP headers from the input stream.
      * @param in the BufferedReader containing the HTTP request
@@ -326,5 +336,63 @@ public class HttpRouter {
             }
         }
         return headers;
+    }
+    
+    /**
+     * Extracts the base path from a full URL path, removing query parameters.
+     * @param fullPath the full path including query parameters (e.g., "/api/users?name=john&age=25")
+     * @return the base path without query parameters (e.g., "/api/users")
+     */
+    private String extractPath(String fullPath) {
+        var questionMarkIndex = fullPath.indexOf('?');
+        return questionMarkIndex != -1 ? fullPath.substring(0, questionMarkIndex) : fullPath;
+    }
+    
+    /**
+     * Parses query parameters from a full URL path.
+     * @param fullPath the full path including query parameters (e.g., "/api/users?name=john&age=25")
+     * @return a Map of query parameter names to their values
+     */
+    private Map<String, String> parseQueryParameters(String fullPath) {
+        var queryParams = new HashMap<String, String>();
+        var questionMarkIndex = fullPath.indexOf('?');
+        
+        if (questionMarkIndex == -1) {
+            return queryParams; // No query parameters
+        }
+        
+        var queryString = fullPath.substring(questionMarkIndex + 1);
+        if (queryString.isEmpty()) {
+            return queryParams; // Empty query string
+        }
+        
+        var pairs = queryString.split("&");
+        for (var pair : pairs) {
+            var equalIndex = pair.indexOf('=');
+            if (equalIndex != -1) {
+                var key = pair.substring(0, equalIndex);
+                var value = pair.substring(equalIndex + 1);
+                // URL decode the key and value
+                queryParams.put(urlDecode(key), urlDecode(value));
+            } else if (!pair.isEmpty()) {
+                // Handle parameters without values (e.g., ?flag)
+                queryParams.put(urlDecode(pair), "");
+            }
+        }
+        
+        return queryParams;
+    }
+    
+    /**
+     * Simple URL decoding for query parameters.
+     * @param encoded the URL-encoded string
+     * @return the decoded string
+     */
+    private String urlDecode(String encoded) {
+        try {
+            return java.net.URLDecoder.decode(encoded, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return encoded; // Return original if decoding fails
+        }
     }
 }

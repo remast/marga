@@ -8,12 +8,14 @@ public class Request {
     private final String path;
     private final Map<String, String> pathParams;
     private final Map<String, String> headers;
+    private final Map<String, String> queryParams;
     
     public Request(String method, String path) {
         this.method = method;
         this.path = path;
         this.pathParams = new HashMap<>();
         this.headers = new HashMap<>();
+        this.queryParams = new HashMap<>();
     }
     
     public Request(String method, String path, Map<String, String> headers) {
@@ -21,6 +23,15 @@ public class Request {
         this.path = path;
         this.pathParams = new HashMap<>();
         this.headers = new HashMap<>(headers);
+        this.queryParams = new HashMap<>();
+    }
+    
+    public Request(String method, String path, Map<String, String> headers, Map<String, String> queryParams) {
+        this.method = method;
+        this.path = path;
+        this.pathParams = new HashMap<>();
+        this.headers = new HashMap<>(headers);
+        this.queryParams = new HashMap<>(queryParams);
     }
     
     public String getMethod() {
@@ -61,5 +72,17 @@ public class Request {
     
     public boolean hasHeader(HttpHeader header) {
         return headers.containsKey(header.getValue());
+    }
+    
+    public String queryParam(String name) {
+        return queryParams.get(name);
+    }
+    
+    public Map<String, String> getQueryParams() {
+        return new HashMap<>(queryParams);
+    }
+    
+    public boolean hasQueryParam(String name) {
+        return queryParams.containsKey(name);
     }
 }

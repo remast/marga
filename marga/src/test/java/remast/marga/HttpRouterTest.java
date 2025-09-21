@@ -3,6 +3,7 @@ package remast.marga;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
+import java.util.HashMap;
 
 
 class HttpRouterTest {
@@ -326,6 +327,129 @@ class HttpRouterTest {
         assertEquals("User response", router.handleRequest("GET", "/new").getBody());
     }
 
+    @Test
+    void queryParametersWithExactRoute() {
+        var queryHandler = new QueryParamHandler();
+        router.GET("/search", queryHandler, "Search with query parameters");
+        
+        var headers = new HashMap<String, String>();
+        var queryParams = new HashMap<String, String>();
+        queryParams.put("q", "java");
+        queryParams.put("limit", "10");
+        
+        var response = router.handleRequest("GET", "/search", headers, queryParams);
+        
+        assertEquals(200, response.getStatusCode());
+        assertTrue(response.getBody().contains("q=java"));
+        assertTrue(response.getBody().contains("limit=10"));
+    }
+
+    @Test
+    void queryParametersWithParameterizedRoute() {
+        var queryHandler = new QueryParamHandler();
+        router.GET("/users/${id}/posts", queryHandler, "Get user posts with query parameters");
+        
+        var headers = new HashMap<String, String>();
+        var queryParams = new HashMap<String, String>();
+        queryParams.put("page", "1");
+        queryParams.put("size", "20");
+        queryParams.put("sort", "date");
+        
+        var response = router.handleRequest("GET", "/users/123/posts", headers, queryParams);
+        
+        assertEquals(200, response.getStatusCode());
+        assertTrue(response.getBody().contains("page=1"));
+        assertTrue(response.getBody().contains("size=20"));
+        assertTrue(response.getBody().contains("sort=date"));
+    }
+
+    @Test
+    void queryParametersWithSpecialCharacters() {
+        var queryHandler = new QueryParamHandler();
+        router.GET("/api/search", queryHandler, "Search with special characters");
+        
+        var headers = new HashMap<String, String>();
+        var queryParams = new HashMap<String, String>();
+        queryParams.put("search", "hello world");
+        queryParams.put("filter", "category=books&price<50");
+        queryParams.put("encoded", "test%20value");
+        
+        var response = router.handleRequest("GET", "/api/search", headers, queryParams);
+        
+        assertEquals(200, response.getStatusCode());
+        assertTrue(response.getBody().contains("search=hello world"));
+        assertTrue(response.getBody().contains("filter=category=books&price<50"));
+        assertTrue(response.getBody().contains("encoded=test%20value"));
+    }
+
+    @Test
+    void queryParametersWithFlagValues() {
+        var queryHandler = new QueryParamHandler();
+        router.GET("/api/users", queryHandler, "Get users with flags");
+        
+        var headers = new HashMap<String, String>();
+        var queryParams = new HashMap<String, String>();
+        queryParams.put("active", ""); // Flag parameter
+        queryParams.put("verified", ""); // Another flag
+        queryParams.put("admin", "true");
+        
+        var response = router.handleRequest("GET", "/api/users", headers, queryParams);
+        
+        assertEquals(200, response.getStatusCode());
+        assertTrue(response.getBody().contains("active="));
+        assertTrue(response.getBody().contains("verified="));
+        assertTrue(response.getBody().contains("admin=true"));
+    }
+
+    @Test
+    void queryParametersWithEmptyValues() {
+        var queryHandler = new QueryParamHandler();
+        router.GET("/api/test", queryHandler, "Test with empty values");
+        
+        var headers = new HashMap<String, String>();
+        var queryParams = new HashMap<String, String>();
+        queryParams.put("empty", "");
+        queryParams.put("null", null);
+        queryParams.put("valid", "value");
+        
+        var response = router.handleRequest("GET", "/api/test", headers, queryParams);
+        
+        assertEquals(200, response.getStatusCode());
+        assertTrue(response.getBody().contains("empty="));
+        assertTrue(response.getBody().contains("valid=value"));
+    }
+
+    @Test
+    void noQueryParameters() {
+        var queryHandler = new QueryParamHandler();
+        router.GET("/api/simple", queryHandler, "Simple endpoint without query params");
+        
+        var headers = new HashMap<String, String>();
+        var queryParams = new HashMap<String, String>();
+        
+        var response = router.handleRequest("GET", "/api/simple", headers, queryParams);
+        
+        assertEquals(200, response.getStatusCode());
+        assertEquals("Query parameters: {}", response.getBody());
+    }
+
+    @Test
+    void queryParametersWithPathParameters() {
+        var queryHandler = new QueryParamHandler();
+        router.GET("/users/${userId}/posts/${postId}", queryHandler, "Get specific post with query params");
+        
+        var headers = new HashMap<String, String>();
+        var queryParams = new HashMap<String, String>();
+        queryParams.put("include", "comments");
+        queryParams.put("format", "json");
+        
+        var response = router.handleRequest("GET", "/users/123/posts/456", headers, queryParams);
+        
+        assertEquals(200, response.getStatusCode());
+        assertTrue(response.getBody().contains("include=comments"));
+        assertTrue(response.getBody().contains("format=json"));
+    }
+
     private static class TestRequestHandler implements RequestHandler {
         private final String responseBody;
 
@@ -336,6 +460,26 @@ class HttpRouterTest {
         @Override
         public Response handle(Request request) {
             return new Response(responseBody);
+        }
+    }
+
+    private static class QueryParamHandler implements RequestHandler {
+        @Override
+        public Response handle(Request request) {
+            var queryParams = request.getQueryParams();
+            var result = new StringBuilder("Query parameters: {");
+            
+            var first = true;
+            for (var entry : queryParams.entrySet()) {
+                if (!first) {
+                    result.append(", ");
+                }
+                result.append(entry.getKey()).append("=").append(entry.getValue());
+                first = false;
+            }
+            result.append("}");
+            
+            return new Response(result.toString());
         }
     }
 }

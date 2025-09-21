@@ -37,6 +37,17 @@ public class HttpRouter {
     
     public Response handleRequest(String method, String path) {
         var request = new Request(method, path);
+        return handleRequestInternal(request);
+    }
+    
+    public Response handleRequest(String method, String path, Map<String, String> headers) {
+        var request = new Request(method, path, headers);
+        return handleRequestInternal(request);
+    }
+    
+    private Response handleRequestInternal(Request request) {
+        var method = request.getMethod();
+        var path = request.getPath();
         
         // Find the longest matching route among all routes (exact + parameterized)
         Route longestMatch = null;
@@ -224,14 +235,10 @@ public class HttpRouter {
                 var method = requestParts[0];
                 var path = requestParts[1];
 
-                // Read headers (we'll skip them for simplicity)
-                String header;
-                while ((header = in.readLine()) != null && !header.isEmpty()) {
-                    // Skip headers
-                }
+                var headers = parseHeaders(in);
 
                 // Handle the request based on path
-                var response = handleRequest(method, path);
+                var response = handleRequest(method, path, headers);
 
                 // Send HTTP response
                 out.println("HTTP/1.1 " + response.getStatusCode());
@@ -278,5 +285,25 @@ public class HttpRouter {
     
     public void shutdown() {
         executor.shutdown();
+    }
+    
+    /**
+     * Parses HTTP headers from the input stream.
+     * @param in the BufferedReader containing the HTTP request
+     * @return a Map of header names to header values
+     * @throws IOException if there's an error reading from the input stream
+     */
+    private Map<String, String> parseHeaders(BufferedReader in) throws IOException {
+        var headers = new HashMap<String, String>();
+        String headerLine;
+        while ((headerLine = in.readLine()) != null && !headerLine.isEmpty()) {
+            var colonIndex = headerLine.indexOf(':');
+            if (colonIndex > 0) {
+                var headerName = headerLine.substring(0, colonIndex).trim();
+                var headerValue = headerLine.substring(colonIndex + 1).trim();
+                headers.put(headerName, headerValue);
+            }
+        }
+        return headers;
     }
 }

@@ -1,6 +1,5 @@
 package remast.marga.middleware;
 
-import remast.marga.Middleware;
 import remast.marga.RequestHandler;
 
 import java.util.logging.Logger;
@@ -9,13 +8,16 @@ import java.util.logging.Logger;
  * Middleware that adds timing information to response headers.
  * This demonstrates how middleware can modify responses.
  */
-public class TimingMiddleware implements Middleware {
+public class TimingMiddleware {
     private static final Logger logger = Logger.getLogger(TimingMiddleware.class.getName());
     private static final String TIMING_HEADER = "X-Response-Time";
     
-    @Override
-    public RequestHandler apply(RequestHandler handler) {
-        return request -> {
+    /**
+     * Creates a timing middleware function.
+     * @return A function that takes a RequestHandler and returns a RequestHandler with timing
+     */
+    public static java.util.function.Function<RequestHandler, RequestHandler> create() {
+        return handler -> request -> {
             var startTime = System.currentTimeMillis();
             var response = handler.handle(request);
             var duration = System.currentTimeMillis() - startTime;

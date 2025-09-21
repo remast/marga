@@ -26,7 +26,7 @@ class MiddlewareTest {
             return Response.ok("Hello");
         };
         
-        var middleware = (Middleware) nextHandler -> request -> {
+        var middleware = (java.util.function.Function<RequestHandler, RequestHandler>) nextHandler -> request -> {
             middlewareCallCount.incrementAndGet();
             return nextHandler.handle(request);
         };
@@ -51,14 +51,14 @@ class MiddlewareTest {
             return Response.ok("Hello");
         };
         
-        var middleware1 = (Middleware) nextHandler -> request -> {
+        var middleware1 = (java.util.function.Function<RequestHandler, RequestHandler>) nextHandler -> request -> {
             executionOrder.set(executionOrder.get() + "1");
             var response = nextHandler.handle(request);
             executionOrder.set(executionOrder.get() + "1");
             return response;
         };
         
-        var middleware2 = (Middleware) nextHandler -> request -> {
+        var middleware2 = (java.util.function.Function<RequestHandler, RequestHandler>) nextHandler -> request -> {
             executionOrder.set(executionOrder.get() + "2");
             var response = nextHandler.handle(request);
             executionOrder.set(executionOrder.get() + "2");
@@ -72,14 +72,14 @@ class MiddlewareTest {
         var response = router.handleRequest("GET", "/test");
         
         assertEquals(200, response.getStatusCode());
-        assertEquals("21handler12", executionOrder.get());
+        assertEquals("12handler21", executionOrder.get());
     }
     
     @Test
     void middlewareShouldWorkWithNotFoundHandler() {
         var middlewareCallCount = new AtomicInteger(0);
         
-        var middleware = (Middleware) nextHandler -> request -> {
+        var middleware = (java.util.function.Function<RequestHandler, RequestHandler>) nextHandler -> request -> {
             middlewareCallCount.incrementAndGet();
             return nextHandler.handle(request);
         };
@@ -101,7 +101,7 @@ class MiddlewareTest {
             throw new RuntimeException("Test exception");
         };
         
-        var middleware = (Middleware) nextHandler -> request -> {
+        var middleware = (java.util.function.Function<RequestHandler, RequestHandler>) nextHandler -> request -> {
             middlewareCallCount.incrementAndGet();
             try {
                 return nextHandler.handle(request);
@@ -120,5 +120,63 @@ class MiddlewareTest {
         assertEquals("Error: Test exception", response.getBody());
         assertEquals(1, middlewareCallCount.get());
         assertEquals(1, exceptionHandled.get());
+    }
+    
+    @Test
+    void shouldSupportVariadicMiddleware() {
+        var callCount = new AtomicInteger(0);
+        var middleware1CallCount = new AtomicInteger(0);
+        var middleware2CallCount = new AtomicInteger(0);
+        var middleware3CallCount = new AtomicInteger(0);
+        
+        var handler = (RequestHandler) request -> {
+            callCount.incrementAndGet();
+            return Response.ok("Hello");
+        };
+        
+        var middleware1 = (java.util.function.Function<RequestHandler, RequestHandler>) nextHandler -> request -> {
+            middleware1CallCount.incrementAndGet();
+            return nextHandler.handle(request);
+        };
+        
+        var middleware2 = (java.util.function.Function<RequestHandler, RequestHandler>) nextHandler -> request -> {
+            middleware2CallCount.incrementAndGet();
+            return nextHandler.handle(request);
+        };
+        
+        var middleware3 = (java.util.function.Function<RequestHandler, RequestHandler>) nextHandler -> request -> {
+            middleware3CallCount.incrementAndGet();
+            return nextHandler.handle(request);
+        };
+        
+        // Add multiple middleware at once (like Chi's variadic approach)
+        router.use(middleware1, middleware2, middleware3);
+        router.GET("/test", handler);
+        
+        var response = router.handleRequest("GET", "/test");
+        
+        assertEquals(200, response.getStatusCode());
+        assertEquals("Hello", response.getBody());
+        assertEquals(1, callCount.get());
+        assertEquals(1, middleware1CallCount.get());
+        assertEquals(1, middleware2CallCount.get());
+        assertEquals(1, middleware3CallCount.get());
+    }
+    
+    @Test
+    void shouldSupportMiddlewareCountAndClear() {
+        var middleware1 = (java.util.function.Function<RequestHandler, RequestHandler>) nextHandler -> nextHandler;
+        var middleware2 = (java.util.function.Function<RequestHandler, RequestHandler>) nextHandler -> nextHandler;
+        
+        assertEquals(0, router.middlewareCount());
+        
+        router.use(middleware1);
+        assertEquals(1, router.middlewareCount());
+        
+        router.use(middleware2);
+        assertEquals(2, router.middlewareCount());
+        
+        router.clearMiddleware();
+        assertEquals(0, router.middlewareCount());
     }
 }

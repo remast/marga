@@ -12,7 +12,7 @@ class GzipCompressionMiddlewareTest {
     @Test
     void shouldCompressLargeTextResponse() {
         var middleware = new GzipCompressionMiddleware(100); // Low threshold for testing
-        var handler = middleware.apply(request -> Response.ok(createLargeTextContent()));
+        var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent()));
         
         var request = new Request("GET", "/test");
         var response = handler.handle(request);
@@ -25,7 +25,7 @@ class GzipCompressionMiddlewareTest {
     @Test
     void shouldNotCompressSmallResponse() {
         var middleware = new GzipCompressionMiddleware(1000);
-        var handler = middleware.apply(request -> Response.ok("Small content"));
+        var handler = middleware.create().apply(request -> Response.ok("Small content"));
         
         var request = new Request("GET", "/test");
         var response = handler.handle(request);
@@ -37,7 +37,7 @@ class GzipCompressionMiddlewareTest {
     @Test
     void shouldNotCompressAlreadyCompressedContent() {
         var middleware = new GzipCompressionMiddleware(100);
-        var handler = middleware.apply(request -> Response.ok(createLargeTextContent(), MediaType.APPLICATION_GZIP));
+        var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent(), MediaType.APPLICATION_GZIP));
         
         var request = new Request("GET", "/test");
         var response = handler.handle(request);
@@ -48,7 +48,7 @@ class GzipCompressionMiddlewareTest {
     @Test
     void shouldNotCompressImages() {
         var middleware = new GzipCompressionMiddleware(100);
-        var handler = middleware.apply(request -> Response.ok(createLargeTextContent(), MediaType.IMAGE_JPEG));
+        var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent(), MediaType.IMAGE_JPEG));
         
         var request = new Request("GET", "/test");
         var response = handler.handle(request);
@@ -59,7 +59,7 @@ class GzipCompressionMiddlewareTest {
     @Test
     void shouldNotCompressErrorResponses() {
         var middleware = new GzipCompressionMiddleware(100);
-        var handler = middleware.apply(request -> Response.serverError(createLargeTextContent()));
+        var handler = middleware.create().apply(request -> Response.serverError(createLargeTextContent()));
         
         var request = new Request("GET", "/test");
         var response = handler.handle(request);
@@ -70,7 +70,7 @@ class GzipCompressionMiddlewareTest {
     @Test
     void shouldNotCompressEmptyResponse() {
         var middleware = new GzipCompressionMiddleware(100);
-        var handler = middleware.apply(request -> Response.noContent());
+        var handler = middleware.create().apply(request -> Response.noContent());
         
         var request = new Request("GET", "/test");
         var response = handler.handle(request);
@@ -82,7 +82,7 @@ class GzipCompressionMiddlewareTest {
     void shouldCompressJsonResponse() {
         var middleware = new GzipCompressionMiddleware(100);
         var jsonContent = createLargeJsonContent();
-        var handler = middleware.apply(request -> Response.json(jsonContent));
+        var handler = middleware.create().apply(request -> Response.json(jsonContent));
         
         var request = new Request("GET", "/test");
         var response = handler.handle(request);
@@ -96,7 +96,7 @@ class GzipCompressionMiddlewareTest {
     void shouldCompressHtmlResponse() {
         var middleware = new GzipCompressionMiddleware(100);
         var htmlContent = createLargeHtmlContent();
-        var handler = middleware.apply(request -> Response.html(htmlContent));
+        var handler = middleware.create().apply(request -> Response.html(htmlContent));
         
         var request = new Request("GET", "/test");
         var response = handler.handle(request);
@@ -110,7 +110,7 @@ class GzipCompressionMiddlewareTest {
     void shouldPreserveOriginalResponseWhenCompressionFails() {
         var middleware = new GzipCompressionMiddleware(100);
         var originalContent = createLargeTextContent();
-        var handler = middleware.apply(request -> Response.ok(originalContent));
+        var handler = middleware.create().apply(request -> Response.ok(originalContent));
         
         var request = new Request("GET", "/test");
         var response = handler.handle(request);
@@ -124,7 +124,7 @@ class GzipCompressionMiddlewareTest {
     void shouldUseCustomMinCompressionSize() {
         var middleware = new GzipCompressionMiddleware(50);
         var content = createMediumTextContent();
-        var handler = middleware.apply(request -> Response.ok(content));
+        var handler = middleware.create().apply(request -> Response.ok(content));
         
         var request = new Request("GET", "/test");
         var response = handler.handle(request);

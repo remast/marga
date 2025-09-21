@@ -36,7 +36,7 @@ class LoggingMiddlewareTest {
     void shouldLogRequestAndResponse() {
         var handler = (RequestHandler) request -> Response.ok("Hello World");
         
-        router.use(new LoggingMiddleware());
+        router.use(LoggingMiddleware.create());
         router.GET("/test", handler);
         
         var response = router.handleRequest("GET", "/test");
@@ -55,7 +55,7 @@ class LoggingMiddlewareTest {
     void shouldLogRequestWithDifferentMethods() {
         var handler = (RequestHandler) request -> Response.ok("Response");
         
-        router.use(new LoggingMiddleware());
+        router.use(LoggingMiddleware.create());
         router.POST("/api/data", handler);
         
         var response = router.handleRequest("POST", "/api/data");
@@ -75,7 +75,7 @@ class LoggingMiddlewareTest {
             throw new RuntimeException("Test error");
         };
         
-        router.use(new LoggingMiddleware());
+        router.use(LoggingMiddleware.create());
         router.GET("/error", handler);
         
         assertThrows(RuntimeException.class, () -> {
@@ -91,7 +91,7 @@ class LoggingMiddlewareTest {
     
     @Test
     void shouldLogNotFoundRequests() {
-        router.use(new LoggingMiddleware());
+        router.use(LoggingMiddleware.create());
         
         var response = router.handleRequest("GET", "/nonexistent");
         

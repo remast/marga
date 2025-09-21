@@ -11,9 +11,9 @@ public class App {
     public static void main(String[] args) throws IOException {
         var router = new HttpRouter();
         
-        // Add middleware (order matters - they will be applied in the order added)
-        router.use(new LoggingMiddleware());
-        router.use(new TimingMiddleware());
+        // Add middleware
+        router.use(LoggingMiddleware.create());
+        router.use(TimingMiddleware.create());
         
         registerRoutes(router);        
         router.printRouteDescriptions();

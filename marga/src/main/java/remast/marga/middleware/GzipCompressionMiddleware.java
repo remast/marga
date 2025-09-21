@@ -1,7 +1,6 @@
 package remast.marga.middleware;
 
 import remast.marga.HttpHeader;
-import remast.marga.Middleware;
 import remast.marga.RequestHandler;
 import remast.marga.Response;
 
@@ -16,7 +15,7 @@ import java.util.zip.GZIPOutputStream;
  * Only compresses responses that are larger than a minimum threshold
  * and have compressible content types.
  */
-public class GzipCompressionMiddleware implements Middleware {
+public class GzipCompressionMiddleware {
     private static final Logger logger = Logger.getLogger(GzipCompressionMiddleware.class.getName());
     private static final String GZIP_ENCODING = "gzip";
     private static final int MIN_COMPRESSION_SIZE = 1024; // 1KB minimum
@@ -31,9 +30,12 @@ public class GzipCompressionMiddleware implements Middleware {
         this.minCompressionSize = minCompressionSize;
     }
     
-    @Override
-    public RequestHandler apply(RequestHandler handler) {
-        return request -> {
+    /**
+     * Creates a gzip compression middleware function.
+     * @return A function that takes a RequestHandler and returns a RequestHandler with compression
+     */
+    public java.util.function.Function<RequestHandler, RequestHandler> create() {
+        return handler -> request -> {
             var response = handler.handle(request);
             
             // Only compress if response is successful and has a body

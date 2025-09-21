@@ -21,7 +21,7 @@ public class HttpRouter {
     private final RequestHandler notFoundHandler;
     private final Config config;
     private final ExecutorService executor;
-    private final List<Middleware> middleware;
+    private final List<java.util.function.Function<RequestHandler, RequestHandler>> middleware;
     
     public HttpRouter() {
         this.exactRoutes = new HashMap<>();
@@ -180,21 +180,42 @@ public class HttpRouter {
     
     /**
      * Add middleware to the router. Middleware will be applied in the order they are added.
-     * @param middleware The middleware to add
+     * @param middleware The middleware to add (a function that takes a RequestHandler and returns a RequestHandler)
      */
-    public void use(Middleware middleware) {
+    public void use(java.util.function.Function<RequestHandler, RequestHandler> middleware) {
         this.middleware.add(middleware);
     }
     
     /**
-     * Apply all registered middleware to a handler in the order they were added.
+     * Add multiple middleware to the router at once (like Chi's variadic approach).
+     * @param middlewares The middleware functions to add
+     */
+    @SafeVarargs
+    public final void use(java.util.function.Function<RequestHandler, RequestHandler>... middlewares) {
+        for (var mw : middlewares) {
+            this.middleware.add(mw);
+        }
+    }
+    
+    public void clearMiddleware() {
+        this.middleware.clear();
+    }
+    
+    public int middlewareCount() {
+        return this.middleware.size();
+    }
+    
+    /**
+     * Apply all registered middleware to a handler (like Chi's approach).
+     * Middleware is applied in reverse order to maintain the expected execution order.
      * @param handler The original handler
      * @return A new handler wrapped with all middleware
      */
     private RequestHandler applyMiddleware(RequestHandler handler) {
         var wrappedHandler = handler;
-        for (var mw : middleware) {
-            wrappedHandler = mw.apply(wrappedHandler);
+        // Apply middleware in reverse order (like Chi does)
+        for (int i = middleware.size() - 1; i >= 0; i--) {
+            wrappedHandler = middleware.get(i).apply(wrappedHandler);
         }
         return wrappedHandler;
     }

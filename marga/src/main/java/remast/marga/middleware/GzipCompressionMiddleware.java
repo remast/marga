@@ -1,5 +1,6 @@
 package remast.marga.middleware;
 
+import remast.marga.HttpHeader;
 import remast.marga.Middleware;
 import remast.marga.RequestHandler;
 import remast.marga.Response;
@@ -17,7 +18,6 @@ import java.util.zip.GZIPOutputStream;
  */
 public class GzipCompressionMiddleware implements Middleware {
     private static final Logger logger = Logger.getLogger(GzipCompressionMiddleware.class.getName());
-    private static final String CONTENT_ENCODING_HEADER = "Content-Encoding";
     private static final String GZIP_ENCODING = "gzip";
     private static final int MIN_COMPRESSION_SIZE = 1024; // 1KB minimum
     
@@ -55,7 +55,7 @@ public class GzipCompressionMiddleware implements Middleware {
                                 originalSize, compressedBody.length, (1 - compressionRatio) * 100));
                             
                             return new Response(compressedBody, response.getStatusCode(), response.getMediaType())
-                                .header(CONTENT_ENCODING_HEADER, GZIP_ENCODING);
+                                .header(HttpHeader.CONTENT_ENCODING, GZIP_ENCODING);
                         }
                     } catch (IOException e) {
                         logger.warning("Failed to compress response: " + e.getMessage());

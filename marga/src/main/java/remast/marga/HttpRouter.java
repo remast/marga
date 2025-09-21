@@ -11,7 +11,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
-
 import java.util.Comparator;
 import remast.marga.handlers.DefaultNotFoundHandler;
 
@@ -236,9 +235,9 @@ public class HttpRouter {
 
                 // Send HTTP response
                 out.println("HTTP/1.1 " + response.getStatusCode());
-                out.println(String.format("Content-Type: %s; charset=UTF-8", response.getMediaType().getValue()));
-                out.println("Content-Length: " + response.getBody().getBytes(StandardCharsets.UTF_8).length);
-                out.println("Connection: close");
+                out.println(String.format("%s: %s; charset=UTF-8", HttpHeader.CONTENT_TYPE.getValue(), response.getMediaType().getValue()));
+                out.println(String.format("%s: %d", HttpHeader.CONTENT_LENGTH.getValue(), response.getBody().getBytes(StandardCharsets.UTF_8).length));
+                out.println(String.format("%s: close", HttpHeader.CONNECTION.getValue()));
                 out.println();
                 out.println(response.getBody());
 

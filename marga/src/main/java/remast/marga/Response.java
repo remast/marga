@@ -7,7 +7,6 @@ public class Response {
     private String body;
     private byte[] bodyBytes;
     private int statusCode;
-    private MediaType mediaType;
     private Map<String, String> headers;
     
     public Response(String body, HttpStatus status) {
@@ -30,20 +29,26 @@ public class Response {
         this.body = body;
         this.bodyBytes = null;
         this.statusCode = statusCode;
-        this.mediaType = mediaType;
         this.headers = new HashMap<>();
+        if (mediaType != null) {
+            this.headers.put(HttpHeader.CONTENT_TYPE.getValue(), mediaType.getValue());
+        }
     }
     
     public Response(byte[] body, int statusCode, MediaType mediaType) {
         this.body = null;
         this.bodyBytes = body;
         this.statusCode = statusCode;
-        this.mediaType = mediaType;
         this.headers = new HashMap<>();
+        if (mediaType != null) {
+            this.headers.put(HttpHeader.CONTENT_TYPE.getValue(), mediaType.getValue());
+        }
     }
 
     public Response mediaType(MediaType mediaType) {
-        this.mediaType = mediaType;
+        if (mediaType != null) {
+            this.headers.put(HttpHeader.CONTENT_TYPE.getValue(), mediaType.getValue());
+        }
         return this;
     }
     
@@ -74,7 +79,8 @@ public class Response {
     }
     
     public MediaType getMediaType() {
-        return mediaType;
+        String contentType = this.headers.get(HttpHeader.CONTENT_TYPE.getValue());
+        return contentType != null ? new MediaType(contentType) : null;
     }
     
     public Map<String, String> getHeaders() {
@@ -86,8 +92,17 @@ public class Response {
         return this;
     }
     
+    public Response header(HttpHeader header, String value) {
+        this.headers.put(header.getValue(), value);
+        return this;
+    }
+    
     public String getHeader(String name) {
         return this.headers.get(name);
+    }
+    
+    public String getHeader(HttpHeader header) {
+        return this.headers.get(header.getValue());
     }
     
     public static Response ok(String body) {

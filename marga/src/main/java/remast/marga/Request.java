@@ -106,4 +106,16 @@ public class Request {
     public int getContentLength() {
         return body.length;
     }
+
+    @Override
+    public String toString() {
+        return "Request{method=" + method
+            + ", path=" + path
+            + ", pathParams=" + pathParams
+            + ", queryParams=" + queryParams
+            + ", headers=" + headers
+            + ", contentLength=" + body.length
+            + ", charset=" + charset
+            + "}";
+    }
 }

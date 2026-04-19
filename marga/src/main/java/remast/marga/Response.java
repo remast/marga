@@ -1,13 +1,17 @@
 package remast.marga;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 public class Response {
-    private String body;
-    private byte[] bodyBytes;
-    private int statusCode;
-    private Map<String, String> headers;
+    private final byte[] body;
+    private final int statusCode;
+    private final Map<String, String> headers;
+    private final Charset charset;
+    private final boolean binary;
     
     public Response(String body, HttpStatus status) {
         this(body, status.getCode(), MediaType.TEXT_PLAIN);
@@ -24,20 +28,34 @@ public class Response {
     public Response(String body, HttpStatus status, MediaType mediaType) {
         this(body, status.getCode(), mediaType);
     }
-    
+
+    public Response(String body, HttpStatus status, MediaType mediaType, Charset charset) {
+        this(body, status.getCode(), mediaType, charset);
+    }
+     
     public Response(String body, int statusCode, MediaType mediaType) {
-        this.body = body;
-        this.bodyBytes = null;
+        this(body, statusCode, mediaType, StandardCharsets.UTF_8);
+    }
+
+    public Response(String body, int statusCode, MediaType mediaType, Charset charset) {
+        this.charset = charset == null ? StandardCharsets.UTF_8 : charset;
+        this.body = body == null ? new byte[0] : body.getBytes(this.charset);
+        this.binary = false;
         this.statusCode = statusCode;
         this.headers = new HashMap<>();
         if (mediaType != null) {
             this.headers.put(HttpHeader.CONTENT_TYPE.getValue(), mediaType.getValue());
         }
     }
-    
+     
     public Response(byte[] body, int statusCode, MediaType mediaType) {
-        this.body = null;
-        this.bodyBytes = body;
+        this(body, statusCode, mediaType, StandardCharsets.UTF_8);
+    }
+
+    public Response(byte[] body, int statusCode, MediaType mediaType, Charset charset) {
+        this.charset = charset == null ? StandardCharsets.UTF_8 : charset;
+        this.body = body == null ? new byte[0] : Arrays.copyOf(body, body.length);
+        this.binary = true;
         this.statusCode = statusCode;
         this.headers = new HashMap<>();
         if (mediaType != null) {
@@ -53,25 +71,15 @@ public class Response {
     }
     
     public String getBody() {
-        if (body != null) {
-            return body;
-        } else if (bodyBytes != null) {
-            return new String(bodyBytes);
-        }
-        return null;
+        return new String(body, charset);
     }
-    
+     
     public byte[] getBodyBytes() {
-        if (bodyBytes != null) {
-            return bodyBytes;
-        } else if (body != null) {
-            return body.getBytes();
-        }
-        return null;
+        return Arrays.copyOf(body, body.length);
     }
-    
+     
     public boolean isBinary() {
-        return bodyBytes != null;
+        return binary;
     }
     
     public int getStatusCode() {
@@ -80,7 +88,15 @@ public class Response {
     
     public MediaType getMediaType() {
         String contentType = this.headers.get(HttpHeader.CONTENT_TYPE.getValue());
-        return contentType != null ? new MediaType(contentType) : null;
+        if (contentType == null) {
+            return null;
+        }
+        var typeOnly = contentType.split(";", 2)[0].trim();
+        return new MediaType(typeOnly);
+    }
+
+    public Charset getCharset() {
+        return charset;
     }
     
     public Map<String, String> getHeaders() {

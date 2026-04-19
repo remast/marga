@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import remast.marga.HttpRouter;
 import remast.marga.Response;
+import remast.marga.middleware.ErrorHandlingMiddleware;
 import remast.marga.middleware.LoggingMiddleware;
 import remast.marga.middleware.TimingMiddleware;
 
@@ -11,7 +12,8 @@ public class App {
     public static void main(String[] args) throws IOException {
         var router = new HttpRouter();
         
-        // Add middleware
+        // Add middleware (error handler first so it wraps everything)
+        router.use(ErrorHandlingMiddleware.create());
         router.use(LoggingMiddleware.create());
         router.use(TimingMiddleware.create());
         

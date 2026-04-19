@@ -10,6 +10,7 @@ class RouteTest {
         var handler = new TestRequestHandler("test response");
         var route = new Route(handler, "Test route");
         
+        assertEquals("GET", route.getMethod());
         assertEquals(handler, route.getHandler());
         assertEquals("Test route", route.getDescription());
         assertEquals("Test route", route.getDescriptionOrDefault());
@@ -30,8 +31,9 @@ class RouteTest {
     @Test
     void routeWithPattern() {
         var handler = new TestRequestHandler("test response");
-        var route = new Route(handler, "Test route", "/users/${id}");
+        var route = new Route("POST", handler, "Test route", "/users/${id}");
         
+        assertEquals("POST", route.getMethod());
         assertEquals(handler, route.getHandler());
         assertEquals("Test route", route.getDescription());
         assertEquals("/users/${id}", route.getPattern());

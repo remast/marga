@@ -69,6 +69,7 @@ router.GET("/api/protected", request -> Response.ok("Secret data"));
 ```
 
 **Built-in middleware includes:**
+- 💣 **ErrorHandlingMiddleware** - Default error handling
 - 📝 **LoggingMiddleware** - Request/response logging
 - ⏱️ **TimingMiddleware** - Performance timing
 - 🗜️ **GzipCompressionMiddleware** - Response compression

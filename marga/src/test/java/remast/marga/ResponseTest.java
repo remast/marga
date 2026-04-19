@@ -1,6 +1,7 @@
 package remast.marga;
 
 import org.junit.jupiter.api.Test;
+import java.nio.charset.StandardCharsets;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ResponseTest {
@@ -75,7 +76,8 @@ class ResponseTest {
     void nullBody() {
         var response = new Response(null, HttpStatus.OK);
         
-        assertNull(response.getBody());
+        assertEquals("", response.getBody());
+        assertEquals(0, response.getBodyBytes().length);
         assertEquals(200, response.getStatusCode());
         assertEquals(MediaType.TEXT_PLAIN, response.getMediaType());
     }
@@ -134,5 +136,23 @@ class ResponseTest {
         assertEquals(200, response.getStatusCode());
         assertEquals(customMediaType, response.getMediaType());
         assertEquals("application/custom", response.getMediaType().getValue());
+    }
+
+    @Test
+    void binaryResponseKeepsBytes() {
+        var payload = new byte[] {0x00, 0x01, 0x02, 0x03};
+        var response = new Response(payload, 200, MediaType.APPLICATION_GZIP);
+
+        assertTrue(response.isBinary());
+        assertArrayEquals(payload, response.getBodyBytes());
+    }
+
+    @Test
+    void stringResponseTracksCharset() {
+        var response = new Response("Gr\u00fc\u00dfe", 200, MediaType.TEXT_PLAIN, StandardCharsets.UTF_8);
+
+        assertFalse(response.isBinary());
+        assertEquals(StandardCharsets.UTF_8, response.getCharset());
+        assertEquals("Gr\u00fc\u00dfe", response.getBody());
     }
 }

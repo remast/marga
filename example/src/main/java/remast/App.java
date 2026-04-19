@@ -23,7 +23,7 @@ public class App {
                 request -> Response.ok("<html><body><h1>Welcome to Marga!</h1></body></html>")
                         .mediaType(MediaType.TEXT_HTML),
                 "Welcome to Marga!");
-        router.GET("/hello", new HelloHandler(), "Greeting");
+        router.GET("/hello", request -> Response.ok("Hello!"));
         router.GET("/greet/${name}", new GreetHandler(), "Greet with name parameter");
 
         router.printRouteDescriptions();

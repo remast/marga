@@ -22,10 +22,8 @@ public class App {
         router.GET("/",
                 request -> Response.ok("<html><body><h1>Welcome to Marga!</h1></body></html>")
                         .mediaType(MediaType.TEXT_HTML),
-                "Root page");
+                "Welcome to Marga!");
         router.GET("/hello", new HelloHandler(), "Greeting");
-        router.GET("/api", new ApiHandler(), "API information");
-        router.GET("/greet", new GreetHandler(), "Greet endpoint");
         router.GET("/greet/${name}", new GreetHandler(), "Greet with name parameter");
 
         router.printRouteDescriptions();

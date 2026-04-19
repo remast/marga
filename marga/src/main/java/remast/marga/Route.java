@@ -8,6 +8,7 @@ class Route {
     private final int staticSegmentCount;
     private final int parameterSegmentCount;
     private final int firstParameterIndex;
+    private RequestHandler wrappedHandler;
     
     public Route(String method, RequestHandler handler, String description, String pattern) {
         this.method = method;
@@ -41,20 +42,35 @@ class Route {
         }
         return patternMatcher.matches(path);
     }
-    
+
+    public boolean matchInto(String path, Request request) {
+        if (patternMatcher == null) {
+            return false;
+        }
+        return patternMatcher.matchInto(path, request);
+    }
+
     public void extractParameters(String path, Request request) {
         if (patternMatcher == null) {
             return;
         }
-        
+
         var parameters = patternMatcher.extractParameters(path);
         for (var entry : parameters.entrySet()) {
             request.addPathParam(entry.getKey(), entry.getValue());
         }
     }
-    
+
     public RequestHandler getHandler() {
         return handler;
+    }
+
+    RequestHandler getWrappedHandler() {
+        return wrappedHandler;
+    }
+
+    void setWrappedHandler(RequestHandler wrappedHandler) {
+        this.wrappedHandler = wrappedHandler;
     }
 
     public String getMethod() {

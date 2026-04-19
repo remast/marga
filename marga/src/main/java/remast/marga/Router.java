@@ -3,6 +3,7 @@ package remast.marga;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
@@ -13,15 +14,37 @@ import remast.marga.handlers.DefaultNotFoundHandler;
 public class Router {
     private static final Logger logger = Logger.getLogger(Router.class.getName());
     private static final Comparator<Route> ROUTE_SPECIFICITY = Router::compareSpecificity;
+    private static final Comparator<Route> ROUTE_SPECIFICITY_DESC = ROUTE_SPECIFICITY.reversed();
 
-    private final Map<String, Route> exactRoutes;
-    private final List<Route> parameterizedRoutes;
+    // Interned canonical method names. Lookup by identity / equals is cheap; skips trim/upper on the hot path.
+    private static final String GET = "GET";
+    private static final String POST = "POST";
+    private static final String PUT = "PUT";
+    private static final String DELETE = "DELETE";
+    private static final String PATCH = "PATCH";
+    private static final String HEAD = "HEAD";
+    private static final String OPTIONS = "OPTIONS";
+
+    // path -> (method -> Route). Removes the per-request "method + ' ' + path" concat and
+    // makes 405 allowed-method collection O(1) for the exact-route portion.
+    private final Map<String, Map<String, Route>> exactRoutesByPath;
+    // Parameterized routes, partitioned by method and pre-sorted by specificity (most specific first).
+    // First-match-wins during lookup replaces the prior stream/filter/max-per-request.
+    private final Map<String, List<Route>> parameterizedByMethod;
     private final List<Function<RequestHandler, RequestHandler>> middleware;
     private RequestHandler notFoundHandler;
 
+    // Middleware-caching state. Middleware is expected to be registered once at startup
+    // (before the first request). Once a request is served, the middleware chain is frozen:
+    // every registered handler is pre-wrapped once, the not-found and 405 handlers are cached,
+    // and any further mutation of the middleware list throws IllegalStateException.
+    private boolean middlewareFrozen;
+    private RequestHandler wrappedNotFoundHandler;
+    private final Map<String, RequestHandler> wrappedMethodNotAllowedByAllow = new HashMap<>();
+
     public Router() {
-        this.exactRoutes = new HashMap<>();
-        this.parameterizedRoutes = new ArrayList<>();
+        this.exactRoutesByPath = new LinkedHashMap<>();
+        this.parameterizedByMethod = new HashMap<>();
         this.middleware = new ArrayList<>();
         this.notFoundHandler = new DefaultNotFoundHandler();
     }
@@ -46,36 +69,37 @@ public class Router {
     }
 
     private Response handleRequestInternal(Request request) {
+        if (!middlewareFrozen) {
+            freezeMiddleware();
+        }
+
         var method = request.getMethod();
         var path = request.getPath();
 
-        var routeKey = method + " " + path;
-        var exactRoute = exactRoutes.get(routeKey);
-        if (exactRoute != null) {
-            return applyMiddleware(exactRoute.getHandler()).handle(request);
+        var methodsForPath = exactRoutesByPath.get(path);
+        if (methodsForPath != null) {
+            var exactRoute = methodsForPath.get(method);
+            if (exactRoute != null) {
+                return exactRoute.getWrappedHandler().handle(request);
+            }
         }
 
-        var bestParameterizedRoute = parameterizedRoutes.stream()
-            .filter(route -> route.getMethod().equals(method))
-            .filter(route -> route.matches(path))
-            .max(ROUTE_SPECIFICITY)
-            .orElse(null);
-
-        if (bestParameterizedRoute != null) {
-            bestParameterizedRoute.extractParameters(path, request);
-            return applyMiddleware(bestParameterizedRoute.getHandler()).handle(request);
+        var candidates = parameterizedByMethod.get(method);
+        if (candidates != null) {
+            for (var route : candidates) {
+                if (route.matchInto(path, request)) {
+                    return route.getWrappedHandler().handle(request);
+                }
+            }
         }
 
         var allowedMethods = collectAllowedMethodsForPath(path);
         if (!allowedMethods.isEmpty()) {
             var allowValue = String.join(", ", allowedMethods);
-            var methodNotAllowedHandler = (RequestHandler) ignored ->
-                Response.methodNotAllowed("405 - Method Not Allowed")
-                    .header(HttpHeader.ALLOW, allowValue);
-            return applyMiddleware(methodNotAllowedHandler).handle(request);
+            return wrappedMethodNotAllowedHandler(allowValue).handle(request);
         }
 
-        return applyMiddleware(notFoundHandler).handle(request);
+        return wrappedNotFoundHandler.handle(request);
     }
 
     public void addRoute(String method, String path, RequestHandler handler) {
@@ -89,10 +113,12 @@ public class Router {
             return;
         }
 
-        var routeKey = normalizedMethod + " " + path;
-        var existingRoute = exactRoutes.put(routeKey, new Route(normalizedMethod, handler, description));
-        if (existingRoute != null) {
-            logger.warning("Replacing duplicate exact route: " + routeKey);
+        var route = new Route(normalizedMethod, handler, description);
+        wrapIfFrozen(route);
+        var methodsForPath = exactRoutesByPath.computeIfAbsent(path, ignored -> new LinkedHashMap<>());
+        var existing = methodsForPath.put(normalizedMethod, route);
+        if (existing != null) {
+            logger.warning("Replacing duplicate exact route: " + normalizedMethod + " " + path);
         }
     }
 
@@ -103,16 +129,19 @@ public class Router {
     public void addParameterizedRoute(String method, String pattern, RequestHandler handler, String description) {
         var normalizedMethod = normalizeMethod(method);
         var route = new Route(normalizedMethod, handler, description, pattern);
-        for (var i = 0; i < parameterizedRoutes.size(); i++) {
-            var existing = parameterizedRoutes.get(i);
-            if (existing.getMethod().equals(normalizedMethod)
-                && pattern.equals(existing.getPattern())) {
+        wrapIfFrozen(route);
+        var routes = parameterizedByMethod.computeIfAbsent(normalizedMethod, ignored -> new ArrayList<>());
+        for (var i = 0; i < routes.size(); i++) {
+            var existing = routes.get(i);
+            if (pattern.equals(existing.getPattern())) {
                 logger.warning("Replacing duplicate parameterized route: " + normalizedMethod + " " + pattern);
-                parameterizedRoutes.set(i, route);
+                routes.set(i, route);
+                routes.sort(ROUTE_SPECIFICITY_DESC);
                 return;
             }
         }
-        parameterizedRoutes.add(route);
+        routes.add(route);
+        routes.sort(ROUTE_SPECIFICITY_DESC);
     }
 
     public void addRoute(String path, RequestHandler handler) {
@@ -183,21 +212,27 @@ public class Router {
         if (notFoundHandler == null) {
             throw new IllegalArgumentException("notFoundHandler cannot be null");
         }
+        if (middlewareFrozen) {
+            throw new IllegalStateException("Cannot change notFoundHandler after the first request has been served");
+        }
         this.notFoundHandler = notFoundHandler;
     }
 
     public void use(Function<RequestHandler, RequestHandler> middleware) {
+        requireUnfrozen();
         this.middleware.add(middleware);
     }
 
     @SafeVarargs
     public final void use(Function<RequestHandler, RequestHandler>... middlewares) {
+        requireUnfrozen();
         for (var middlewareItem : middlewares) {
             this.middleware.add(middlewareItem);
         }
     }
 
     public void clearMiddleware() {
+        requireUnfrozen();
         this.middleware.clear();
     }
 
@@ -206,31 +241,77 @@ public class Router {
     }
 
     Map<String, Route> getRoutes() {
-        var allRoutes = new HashMap<String, Route>(exactRoutes);
-        for (var route : parameterizedRoutes) {
-            var key = route.getMethod() + " " + route.getPattern();
-            allRoutes.put(key, route);
+        var allRoutes = new LinkedHashMap<String, Route>();
+        for (var entry : exactRoutesByPath.entrySet()) {
+            var path = entry.getKey();
+            for (var methodEntry : entry.getValue().entrySet()) {
+                allRoutes.put(methodEntry.getKey() + " " + path, methodEntry.getValue());
+            }
+        }
+        for (var entry : parameterizedByMethod.entrySet()) {
+            for (var route : entry.getValue()) {
+                allRoutes.put(entry.getKey() + " " + route.getPattern(), route);
+            }
         }
         return allRoutes;
     }
 
     public void printRouteDescriptions() {
         logger.info("Application Routes:");
-        for (var entry : exactRoutes.entrySet()) {
-            var routeKey = entry.getKey();
-            var parts = routeKey.split(" ", 2);
-            if (parts.length == 2) {
-                var route = entry.getValue();
-                var description = route.getDescriptionOrDefault();
-                logger.info(String.format("  %s %s - %s", parts[0], parts[1], description));
+        for (var entry : exactRoutesByPath.entrySet()) {
+            var path = entry.getKey();
+            for (var methodEntry : entry.getValue().entrySet()) {
+                var route = methodEntry.getValue();
+                logger.info(String.format("  %s %s - %s", methodEntry.getKey(), path, route.getDescriptionOrDefault()));
             }
         }
 
-        var sortedParameterizedRoutes = new ArrayList<>(parameterizedRoutes);
-        sortedParameterizedRoutes.sort((left, right) -> compareSpecificity(right, left));
+        var sortedParameterizedRoutes = new ArrayList<Route>();
+        for (var routes : parameterizedByMethod.values()) {
+            sortedParameterizedRoutes.addAll(routes);
+        }
+        sortedParameterizedRoutes.sort(ROUTE_SPECIFICITY_DESC);
         for (var route : sortedParameterizedRoutes) {
             logger.info(String.format("  %s %s - %s", route.getMethod(), route.getPattern(), route.getDescriptionOrDefault()));
         }
+    }
+
+    private void freezeMiddleware() {
+        middlewareFrozen = true;
+        wrappedNotFoundHandler = applyMiddleware(notFoundHandler);
+        for (var methodsForPath : exactRoutesByPath.values()) {
+            for (var route : methodsForPath.values()) {
+                if (route.getWrappedHandler() == null) {
+                    route.setWrappedHandler(applyMiddleware(route.getHandler()));
+                }
+            }
+        }
+        for (var routes : parameterizedByMethod.values()) {
+            for (var route : routes) {
+                if (route.getWrappedHandler() == null) {
+                    route.setWrappedHandler(applyMiddleware(route.getHandler()));
+                }
+            }
+        }
+    }
+
+    private void wrapIfFrozen(Route route) {
+        if (middlewareFrozen) {
+            route.setWrappedHandler(applyMiddleware(route.getHandler()));
+        }
+    }
+
+    private RequestHandler wrappedMethodNotAllowedHandler(String allowValue) {
+        var cached = wrappedMethodNotAllowedByAllow.get(allowValue);
+        if (cached != null) {
+            return cached;
+        }
+        RequestHandler baseHandler = ignored ->
+            Response.methodNotAllowed("405 - Method Not Allowed")
+                .header(HttpHeader.ALLOW, allowValue);
+        var wrapped = applyMiddleware(baseHandler);
+        wrappedMethodNotAllowedByAllow.put(allowValue, wrapped);
+        return wrapped;
     }
 
     private RequestHandler applyMiddleware(RequestHandler handler) {
@@ -241,27 +322,59 @@ public class Router {
         return wrappedHandler;
     }
 
+    private void requireUnfrozen() {
+        if (middlewareFrozen) {
+            throw new IllegalStateException("Middleware cannot be modified after the first request has been served");
+        }
+    }
+
     private TreeSet<String> collectAllowedMethodsForPath(String path) {
         var allowedMethods = new TreeSet<String>();
-        for (var entry : exactRoutes.entrySet()) {
-            var parts = entry.getKey().split(" ", 2);
-            if (parts.length == 2 && parts[1].equals(path)) {
-                allowedMethods.add(parts[0]);
-            }
+        var methodsForPath = exactRoutesByPath.get(path);
+        if (methodsForPath != null) {
+            allowedMethods.addAll(methodsForPath.keySet());
         }
-        for (var route : parameterizedRoutes) {
-            if (route.matches(path)) {
-                allowedMethods.add(route.getMethod());
+        for (var entry : parameterizedByMethod.entrySet()) {
+            for (var route : entry.getValue()) {
+                if (route.matches(path)) {
+                    allowedMethods.add(entry.getKey());
+                    break;
+                }
             }
         }
         return allowedMethods;
     }
 
     private String normalizeMethod(String method) {
-        if (method == null || method.isBlank()) {
-            return "GET";
+        if (method == null) {
+            return GET;
         }
-        return method.trim().toUpperCase();
+        // Fast path: already-canonical strings (avoids trim+toUpperCase allocation).
+        switch (method) {
+            case GET: return GET;
+            case POST: return POST;
+            case PUT: return PUT;
+            case DELETE: return DELETE;
+            case PATCH: return PATCH;
+            case HEAD: return HEAD;
+            case OPTIONS: return OPTIONS;
+            default:
+                if (method.isBlank()) {
+                    return GET;
+                }
+                var upper = method.trim().toUpperCase();
+                // Return interned constant when possible so later equals() calls can short-circuit.
+                switch (upper) {
+                    case GET: return GET;
+                    case POST: return POST;
+                    case PUT: return PUT;
+                    case DELETE: return DELETE;
+                    case PATCH: return PATCH;
+                    case HEAD: return HEAD;
+                    case OPTIONS: return OPTIONS;
+                    default: return upper;
+                }
+        }
     }
 
     private static int compareSpecificity(Route left, Route right) {

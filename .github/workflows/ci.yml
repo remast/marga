@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   build:
     name: Build
@@ -29,8 +33,19 @@ jobs:
         restore-keys: ${{ runner.os }}-m2
         
     - name: Build with Maven
-      run: mvn clean compile package --batch-mode
-      
+      run: mvn clean verify --batch-mode
+
+    - name: Add coverage to PR
+      if: github.event_name == 'pull_request'
+      uses: madrapps/jacoco-report@v1.7.1
+      with:
+        paths: ${{ github.workspace }}/marga/target/site/jacoco/jacoco.xml
+        token: ${{ secrets.GITHUB_TOKEN }}
+        min-coverage-overall: 0
+        min-coverage-changed-files: 0
+        title: Code Coverage
+        update-comment: true
+       
     # - name: Upload build artifacts
     #   uses: actions/upload-artifact@v4
     #   with:

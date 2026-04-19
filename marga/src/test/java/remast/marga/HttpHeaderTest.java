@@ -52,6 +52,8 @@ class HttpHeaderTest {
         assertNotNull(HttpHeader.CONTENT_TYPE);
         assertNotNull(HttpHeader.CONTENT_LENGTH);
         assertNotNull(HttpHeader.CONTENT_ENCODING);
+        assertNotNull(HttpHeader.DATE);
+        assertNotNull(HttpHeader.ALLOW);
         assertNotNull(HttpHeader.AUTHORIZATION);
         assertNotNull(HttpHeader.USER_AGENT);
         assertNotNull(HttpHeader.ACCEPT);

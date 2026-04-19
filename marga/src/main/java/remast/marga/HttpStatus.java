@@ -8,6 +8,7 @@ public enum HttpStatus {
     UNAUTHORIZED(401, "Unauthorized"),
     FORBIDDEN(403, "Forbidden"),
     METHOD_NOT_ALLOWED(405, "Method Not Allowed"),
+    PAYLOAD_TOO_LARGE(413, "Payload Too Large"),
     CREATED(201, "Created"),
     NO_CONTENT(204, "No Content");
     
@@ -25,6 +26,15 @@ public enum HttpStatus {
     
     public String getReasonPhrase() {
         return reasonPhrase;
+    }
+
+    public static HttpStatus fromCode(int statusCode) {
+        for (var status : values()) {
+            if (status.code == statusCode) {
+                return status;
+            }
+        }
+        return null;
     }
     
     @Override

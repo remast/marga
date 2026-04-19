@@ -21,9 +21,8 @@ public class TimingMiddleware {
             var startTime = System.currentTimeMillis();
             var response = handler.handle(request);
             var duration = System.currentTimeMillis() - startTime;
-            
-            // Note: In a real implementation, you'd want to add headers to the response
-            // For now, we'll just log the timing information
+
+            response.header(TIMING_HEADER, duration + "ms");
             logger.info(String.format("Request to %s %s took %dms", 
                 request.getMethod(), request.getPath(), duration));
             

@@ -37,10 +37,14 @@ public class GzipCompressionMiddleware {
     public java.util.function.Function<RequestHandler, RequestHandler> create() {
         return handler -> request -> {
             var response = handler.handle(request);
+
+            if (response.isBinary()) {
+                return response;
+            }
             
             // Only compress if response is successful and has a body
-            if (response.getStatusCode() >= 200 && response.getStatusCode() < 300 
-                && response.getBody() != null && !response.getBody().isEmpty()) {
+            if (response.getStatusCode() >= 200 && response.getStatusCode() < 300
+                && !response.getBody().isEmpty()) {
                 
                 var originalBody = response.getBody();
                 var originalSize = originalBody.getBytes(StandardCharsets.UTF_8).length;

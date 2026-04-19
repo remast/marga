@@ -43,6 +43,14 @@ class HttpStatusTest {
     }
 
     @Test
+    void fromCodeFindsKnownStatuses() {
+        assertEquals(HttpStatus.OK, HttpStatus.fromCode(200));
+        assertEquals(HttpStatus.NOT_FOUND, HttpStatus.fromCode(404));
+        assertEquals(HttpStatus.METHOD_NOT_ALLOWED, HttpStatus.fromCode(405));
+        assertNull(HttpStatus.fromCode(999));
+    }
+
+    @Test
     void allStatusCodesAreUnique() {
         var statuses = HttpStatus.values();
         var codes = new int[statuses.length];

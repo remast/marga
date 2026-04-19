@@ -53,7 +53,9 @@ public enum HttpHeader {
     ORIGIN("Origin"),
     
     // Response headers
+    DATE("Date"),
     LOCATION("Location"),
+    ALLOW("Allow"),
     REFRESH("Refresh"),
     RETRY_AFTER("Retry-After"),
     SERVER("Server"),

@@ -118,7 +118,17 @@ class HttpRouterTest {
         router.addRoute("GET", "/test", testHandler);
         
         var response = router.handleRequest("POST", "/test");
-        assertEquals(404, response.getStatusCode());
+        assertEquals(405, response.getStatusCode());
+        assertEquals("GET", response.getHeader(HttpHeader.ALLOW));
+    }
+
+    @Test
+    void parameterizedRouteRespectsMethod() {
+        router.POST("/users/${id}", userHandler);
+
+        var response = router.handleRequest("GET", "/users/123");
+        assertEquals(405, response.getStatusCode());
+        assertEquals("POST", response.getHeader(HttpHeader.ALLOW));
     }
 
     @Test

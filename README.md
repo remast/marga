@@ -91,7 +91,7 @@ Marga is designed with simplicity and performance in mind:
 <dependency>
     <groupId>io.github.remast</groupId>
     <artifactId>marga-router</artifactId>
-    <version>0.0.2</version>
+    <version>0.0.3</version>
 </dependency>
 ```
 

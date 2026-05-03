@@ -11,13 +11,20 @@ public class GreetHandler implements RequestHandler {
     public Response handle(Request request) {
         var name = request.pathParam("name");
         var greeting = name != null ? "Hello, " + name + "!" : "Hello, stranger!";
-        
-        var body = "<html><body><h1>Greetings!</h1>" +
-                   "<p>" + greeting + "</p>" +
-                   "<p>Method: " + request.getMethod() + "</p>" +
-                   "<p>Path: " + request.getPath() + "</p>" +
-                   "<p>Name parameter: " + (name != null ? name : "not provided") + "</p>" +
-                   "<a href='/'>Zurück zur Startseite</a></body></html>";
+
+        var body = """
+                <html><body><h1>Greetings!</h1>
+                <p>%s</p>
+                <p>Method: %s</p>
+                <p>Path: %s</p>
+                <p>Name parameter: %s</p>
+                <a href='/'>Back</a></body></html>
+                """.formatted(
+                greeting,
+                request.getMethod(),
+                request.getPath(),
+                name != null ? name : "not provided"
+        );
         return Response.ok(body).mediaType(MediaType.TEXT_HTML);
     }
 

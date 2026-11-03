@@ -197,6 +197,13 @@ public enum HttpStatus {
      */
     CONTENT_TOO_LARGE(413, "Content Too Large"),
     /**
+     * {@code 413 Payload Too Large}.
+     * @since 4.1
+     * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.11">
+     *     HTTP/1.1: Semantics and Content, section 6.5.11</a>
+     */
+    PAYLOAD_TOO_LARGE(413, "Payload Too Large"),
+    /**
      * {@code 414 URI Too Long}.
      * @since 4.1
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#name-414-uri-too-long">

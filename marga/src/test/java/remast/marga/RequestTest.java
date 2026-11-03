@@ -113,6 +113,21 @@ class RequestTest {
     }
 
     @Test
+    void headersAreCaseInsensitive() {
+        var headers = new HashMap<String, String>();
+        headers.put("content-type", "application/json");
+        headers.put("AUTHORIZATION", "Bearer token123");
+
+        var request = new Request("GET", "/test", headers);
+
+        assertEquals("application/json", request.header("Content-Type"));
+        assertEquals("application/json", request.header(HttpHeader.CONTENT_TYPE));
+        assertEquals("Bearer token123", request.header("authorization"));
+        assertTrue(request.hasHeader("CONTENT-TYPE"));
+        assertTrue(request.hasHeader(HttpHeader.AUTHORIZATION));
+    }
+
+    @Test
     void headersAreImmutable() {
         var headers = new HashMap<String, String>();
         headers.put("Content-Type", "application/json");

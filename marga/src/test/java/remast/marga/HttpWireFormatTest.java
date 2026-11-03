@@ -99,6 +99,28 @@ class HttpWireFormatTest {
         }
     }
 
+    @Test
+    void handlerShouldReadLowercaseWireHeaders() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
+        router.GET("/headers", request -> Response.ok(request.header(HttpHeader.AUTHORIZATION)));
+
+        var serverThread = Thread.ofVirtual().start(() -> {
+            try {
+                router.run();
+            } catch (IOException ignored) {
+            }
+        });
+
+        waitForServerPort(router);
+        try {
+            var raw = sendRaw(router.getPort(), "GET /headers HTTP/1.1\r\nhost: localhost\r\nauthorization: Bearer token123\r\nconnection: close\r\n\r\n");
+            assertTrue(raw.endsWith("Bearer token123"), "handler did not receive lowercase header: " + raw);
+        } finally {
+            router.shutdown();
+            serverThread.join(2_000);
+        }
+    }
+
     private static String sendRaw(int port, String request) throws IOException {
         return new String(sendRawBytes(port, request), StandardCharsets.ISO_8859_1);
     }

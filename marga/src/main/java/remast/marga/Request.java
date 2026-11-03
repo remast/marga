@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class Request {
     private static final byte[] EMPTY_BODY = new byte[0];
@@ -33,7 +34,8 @@ public class Request {
         this.method = method;
         this.path = path;
         this.pathParams = new HashMap<>();
-        this.headers = new HashMap<>(headers);
+        this.headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        this.headers.putAll(headers);
         this.queryParams = new HashMap<>(queryParams);
         this.body = body == null ? EMPTY_BODY : Arrays.copyOf(body, body.length);
         this.charset = charset == null ? StandardCharsets.UTF_8 : charset;

@@ -12,7 +12,7 @@ import java.util.Map;
 final class HttpResponseWriter {
     private static final String CRLF = "\r\n";
 
-    void write(OutputStream outputStream, Response response) throws IOException {
+    void write(OutputStream outputStream, Response response, String requestMethod) throws IOException {
         var bodyBytes = response.getBodyBytes();
         var headers = new HashMap<>(response.getHeaders());
 
@@ -21,7 +21,11 @@ final class HttpResponseWriter {
         }
 
         appendCharsetIfNeeded(headers, response);
-        headers.put(HttpHeader.CONTENT_LENGTH.getValue(), String.valueOf(bodyBytes.length));
+        if (mustNotSendContentLength(response.getStatusCode())) {
+            removeHeader(headers, HttpHeader.CONTENT_LENGTH.getValue());
+        } else {
+            headers.put(HttpHeader.CONTENT_LENGTH.getValue(), String.valueOf(bodyBytes.length));
+        }
         headers.putIfAbsent(HttpHeader.CONNECTION.getValue(), "close");
         headers.putIfAbsent(HttpHeader.DATE.getValue(), rfc1123Now());
 
@@ -35,7 +39,9 @@ final class HttpResponseWriter {
             writeAsciiLine(outputStream, entry.getKey() + ": " + entry.getValue());
         }
         writeAsciiLine(outputStream, "");
-        outputStream.write(bodyBytes);
+        if (shouldWriteBody(requestMethod, response.getStatusCode())) {
+            outputStream.write(bodyBytes);
+        }
         outputStream.flush();
     }
 
@@ -77,6 +83,27 @@ final class HttpResponseWriter {
 
     private static boolean containsHeader(Map<String, String> headers, String expectedName) {
         return findHeaderName(headers, expectedName) != null;
+    }
+
+    private static void removeHeader(Map<String, String> headers, String expectedName) {
+        var headerName = findHeaderName(headers, expectedName);
+        if (headerName != null) {
+            headers.remove(headerName);
+        }
+    }
+
+    private static boolean shouldWriteBody(String requestMethod, int statusCode) {
+        return !"HEAD".equalsIgnoreCase(requestMethod) && !isBodyForbiddenStatus(statusCode);
+    }
+
+    private static boolean mustNotSendContentLength(int statusCode) {
+        return statusCode >= 100 && statusCode < 200 || statusCode == HttpStatus.NO_CONTENT.getCode();
+    }
+
+    private static boolean isBodyForbiddenStatus(int statusCode) {
+        return statusCode >= 100 && statusCode < 200
+            || statusCode == HttpStatus.NO_CONTENT.getCode()
+            || statusCode == HttpStatus.NOT_MODIFIED.getCode();
     }
 
     private static String findHeaderName(Map<String, String> headers, String expectedName) {

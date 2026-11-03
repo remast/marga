@@ -96,7 +96,7 @@ final class HttpServer {
 
             var requestParts = requestLine.split(" ");
             if (requestParts.length < 2) {
-                responseWriter.write(out, Response.badRequest("400 - Bad Request"));
+                responseWriter.write(out, Response.badRequest("400 - Bad Request"), null);
                 return;
             }
 
@@ -108,7 +108,7 @@ final class HttpServer {
 
             var contentLength = parseContentLength(headers);
             if (contentLength > config.getMaxRequestBodyBytes()) {
-                responseWriter.write(out, new Response("413 - Content Too Large", HttpStatus.CONTENT_TOO_LARGE));
+                responseWriter.write(out, new Response("413 - Content Too Large", HttpStatus.CONTENT_TOO_LARGE), method);
                 return;
             }
 
@@ -125,10 +125,10 @@ final class HttpServer {
             }
 
             try {
-                responseWriter.write(out, response);
+                responseWriter.write(out, response, method);
             } catch (IllegalArgumentException e) {
                 logger.severe("Invalid response headers, returning 500: " + e.getMessage());
-                responseWriter.write(out, Response.serverError("500 - Internal Server Error"));
+                responseWriter.write(out, Response.serverError("500 - Internal Server Error"), method);
             }
         } catch (SocketException e) {
             logger.fine("Socket closed while handling request: " + e.getMessage());

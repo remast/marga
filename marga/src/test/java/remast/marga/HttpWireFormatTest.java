@@ -77,6 +77,57 @@ class HttpWireFormatTest {
     }
 
     @Test
+    void headResponseShouldNotWriteBodyButPreserveContentLength() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
+        router.HEAD("/head", request -> Response.ok("pong"));
+
+        var serverThread = Thread.ofVirtual().start(() -> {
+            try {
+                router.run();
+            } catch (IOException ignored) {
+            }
+        });
+
+        waitForServerPort(router);
+        try {
+            var raw = sendRaw(router.getPort(), "HEAD /head HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+            assertTrue(raw.contains("Content-Length: 4\r\n"), "missing representation length: " + raw);
+            assertEquals("", responseBody(raw));
+        } finally {
+            router.shutdown();
+            serverThread.join(2_000);
+        }
+    }
+
+    @Test
+    void noContentAndNotModifiedResponsesShouldNotWriteBodies() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
+        router.GET("/no-content", request -> new Response("ignored", HttpStatus.NO_CONTENT));
+        router.GET("/not-modified", request -> new Response("cached", HttpStatus.NOT_MODIFIED));
+
+        var serverThread = Thread.ofVirtual().start(() -> {
+            try {
+                router.run();
+            } catch (IOException ignored) {
+            }
+        });
+
+        waitForServerPort(router);
+        try {
+            var noContent = sendRaw(router.getPort(), "GET /no-content HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+            assertFalse(noContent.toLowerCase().contains("content-length:"), "204 must not include Content-Length: " + noContent);
+            assertEquals("", responseBody(noContent));
+
+            var notModified = sendRaw(router.getPort(), "GET /not-modified HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+            assertTrue(notModified.contains("Content-Length: 6\r\n"), "missing representation length: " + notModified);
+            assertEquals("", responseBody(notModified));
+        } finally {
+            router.shutdown();
+            serverThread.join(2_000);
+        }
+    }
+
+    @Test
     void headerValueWithCrlfShouldYield500() throws Exception {
         var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
         router.GET("/bad", request -> Response.ok("hi").header("X-Bad", "foo\r\nX-Injected: yes"));
@@ -168,6 +219,12 @@ class HttpWireFormatTest {
 
     private static String sendRaw(int port, String request) throws IOException {
         return new String(sendRawBytes(port, request), StandardCharsets.ISO_8859_1);
+    }
+
+    private static String responseBody(String raw) {
+        var headerEnd = raw.indexOf("\r\n\r\n");
+        assertTrue(headerEnd >= 0, "missing header terminator: " + raw);
+        return raw.substring(headerEnd + 4);
     }
 
     private static byte[] sendRawBytes(int port, String request) throws IOException {

@@ -191,18 +191,10 @@ public enum HttpStatus {
     PRECONDITION_FAILED(412, "Precondition Failed"),
     /**
      * {@code 413 Content Too Large}.
-     * @since 7.0
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#name-413-content-too-large">
      *     HTTP Semantics, section 15.5.14</a>
      */
     CONTENT_TOO_LARGE(413, "Content Too Large"),
-    /**
-     * {@code 413 Payload Too Large}.
-     * @since 4.1
-     * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.11">
-     *     HTTP/1.1: Semantics and Content, section 6.5.11</a>
-     */
-    PAYLOAD_TOO_LARGE(413, "Payload Too Large"),
     /**
      * {@code 414 URI Too Long}.
      * @since 4.1
@@ -247,13 +239,6 @@ public enum HttpStatus {
      *     HTTP Semantics, section 15.5.21</a>
      */
     UNPROCESSABLE_CONTENT(422, "Unprocessable Content"),
-    /**
-     * {@code 422 Unprocessable Entity}.
-     * @see <a href="https://tools.ietf.org/html/rfc4918#section-11.2">WebDAV</a>
-     * @deprecated since 7.0 in favor of {@link #UNPROCESSABLE_CONTENT}
-     */
-    @Deprecated(since = "7.0")
-    UNPROCESSABLE_ENTITY(422, "Unprocessable Entity"),
     /**
      * {@code 423 Locked}.
      * @see <a href="https://tools.ietf.org/html/rfc4918#section-11.3">WebDAV</a>

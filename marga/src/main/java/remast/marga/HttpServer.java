@@ -108,7 +108,7 @@ final class HttpServer {
 
             var contentLength = parseContentLength(headers);
             if (contentLength > config.getMaxRequestBodyBytes()) {
-                responseWriter.write(out, new Response("413 - Payload Too Large", HttpStatus.PAYLOAD_TOO_LARGE));
+                responseWriter.write(out, new Response("413 - Content Too Large", HttpStatus.CONTENT_TOO_LARGE));
                 return;
             }
 

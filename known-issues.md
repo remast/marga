@@ -1,9 +1,5 @@
 # Known Issues
 
-## Response header-name validation
-
-`HttpResponseWriter` rejects CR/LF in header values but does not validate header names. A response header name containing CR/LF can inject additional response headers. Validate header names as HTTP field-name tokens before serializing them.
-
 ## HTTP response body rules
 
 The server writes a response body for every response. HTTP forbids bodies on `HEAD`, `1xx`, `204`, and `304` responses. Pass request-method context to the response writer and suppress bodies where required.

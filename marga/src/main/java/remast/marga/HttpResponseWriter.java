@@ -26,6 +26,7 @@ final class HttpResponseWriter {
         headers.putIfAbsent(HttpHeader.DATE.getValue(), rfc1123Now());
 
         for (var entry : headers.entrySet()) {
+            validateHeaderName(entry.getKey());
             validateHeaderValue(entry.getKey(), entry.getValue());
         }
 
@@ -89,6 +90,24 @@ final class HttpResponseWriter {
 
     private static String rfc1123Now() {
         return DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC));
+    }
+
+    private static void validateHeaderName(String name) {
+        if (name == null || name.isEmpty()) {
+            throw new IllegalArgumentException("Invalid header name: must not be null or empty");
+        }
+        for (var i = 0; i < name.length(); i++) {
+            if (!isFieldNameCharacter(name.charAt(i))) {
+                throw new IllegalArgumentException("Invalid header name '" + name + "': must contain only HTTP token characters");
+            }
+        }
+    }
+
+    private static boolean isFieldNameCharacter(char c) {
+        return c >= 'a' && c <= 'z'
+            || c >= 'A' && c <= 'Z'
+            || c >= '0' && c <= '9'
+            || "!#$%&'*+-.^_`|~".indexOf(c) >= 0;
     }
 
     private static void validateHeaderValue(String name, String value) {

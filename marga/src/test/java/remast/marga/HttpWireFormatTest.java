@@ -100,6 +100,51 @@ class HttpWireFormatTest {
     }
 
     @Test
+    void headerNameWithCrlfShouldYield500WithoutInjectingHeaders() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
+        router.GET("/bad", request -> Response.ok("hi").header("X-Bad\r\nX-Injected", "yes"));
+
+        var serverThread = Thread.ofVirtual().start(() -> {
+            try {
+                router.run();
+            } catch (IOException ignored) {
+            }
+        });
+
+        waitForServerPort(router);
+        try {
+            var raw = sendRaw(router.getPort(), "GET /bad HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+            assertTrue(raw.startsWith("HTTP/1.1 500 "), "expected 500, got: " + raw);
+            assertFalse(raw.contains("X-Injected"), "header injection leaked into response");
+        } finally {
+            router.shutdown();
+            serverThread.join(2_000);
+        }
+    }
+
+    @Test
+    void headerNameWithInvalidTokenCharacterShouldYield500() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
+        router.GET("/bad", request -> Response.ok("hi").header("X Bad", "value"));
+
+        var serverThread = Thread.ofVirtual().start(() -> {
+            try {
+                router.run();
+            } catch (IOException ignored) {
+            }
+        });
+
+        waitForServerPort(router);
+        try {
+            var raw = sendRaw(router.getPort(), "GET /bad HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+            assertTrue(raw.startsWith("HTTP/1.1 500 "), "expected 500, got: " + raw);
+        } finally {
+            router.shutdown();
+            serverThread.join(2_000);
+        }
+    }
+
+    @Test
     void handlerShouldReadLowercaseWireHeaders() throws Exception {
         var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
         router.GET("/headers", request -> Response.ok(request.header(HttpHeader.AUTHORIZATION)));

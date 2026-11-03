@@ -364,16 +364,16 @@ public class Router {
                 }
                 var upper = method.trim().toUpperCase();
                 // Return interned constant when possible so later equals() calls can short-circuit.
-                switch (upper) {
-                    case GET: return GET;
-                    case POST: return POST;
-                    case PUT: return PUT;
-                    case DELETE: return DELETE;
-                    case PATCH: return PATCH;
-                    case HEAD: return HEAD;
-                    case OPTIONS: return OPTIONS;
-                    default: return upper;
-                }
+                return switch (upper) {
+                    case GET -> GET;
+                    case POST -> POST;
+                    case PUT -> PUT;
+                    case DELETE -> DELETE;
+                    case PATCH -> PATCH;
+                    case HEAD -> HEAD;
+                    case OPTIONS -> OPTIONS;
+                    default -> upper;
+                };
         }
     }
 

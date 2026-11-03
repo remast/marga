@@ -25,7 +25,6 @@ final class HttpServer {
     private final ExecutorService executor;
     private final HttpResponseWriter responseWriter;
     private final AtomicBoolean running;
-
     private ServerSocket serverSocket;
 
     HttpServer(Router router, Config config) {

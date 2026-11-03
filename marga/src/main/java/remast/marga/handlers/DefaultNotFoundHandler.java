@@ -6,6 +6,7 @@ import remast.marga.Response;
 import remast.marga.HttpStatus;
 
 public class DefaultNotFoundHandler implements RequestHandler {
+
     @Override
     public Response handle(Request request) {
         return new Response(

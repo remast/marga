@@ -15,16 +15,8 @@ public enum HttpStatus {
      */
     SWITCHING_PROTOCOLS(101, "Switching Protocols"),
     /**
-     * {@code 102 Processing}.
-     * @see <a href="https://tools.ietf.org/html/rfc2518#section-10.1">WebDAV</a>
-     * @deprecated since 7.0, removed from <a href="https://datatracker.ietf.org/doc/html/rfc4918#section-21.4">WebDAV specification</a>
-     */
-    @Deprecated(since = "7.0")
-    PROCESSING(102, "Processing"),
-    /**
      * {@code 103 Early Hints}.
      * @see <a href="https://tools.ietf.org/html/rfc8297">An HTTP Status Code for Indicating Hints</a>
-     * @since 6.0.5
      */
     EARLY_HINTS(103, "Early Hints"),
 
@@ -197,7 +189,6 @@ public enum HttpStatus {
     CONTENT_TOO_LARGE(413, "Content Too Large"),
     /**
      * {@code 414 URI Too Long}.
-     * @since 4.1
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#name-414-uri-too-long">
      *     HTTP Semantics, section 15.5.15</a>
      */
@@ -220,13 +211,6 @@ public enum HttpStatus {
      *     HTTP Semantics, section 15.5.18</a>
      */
     EXPECTATION_FAILED(417, "Expectation Failed"),
-    /**
-     * {@code 418 I'm a teapot}.
-     * @see <a href="https://tools.ietf.org/html/rfc2324#section-2.3.2">HTCPCP/1.0</a>
-     * @deprecated since 7.0, marked as unused in RFC 9110
-     */
-    @Deprecated(since = "7.0")
-    I_AM_A_TEAPOT(418, "I'm a teapot"),
     /**
      * {@code 421 Misdirected Request}.
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#name-421-misdirected-request">
@@ -251,7 +235,6 @@ public enum HttpStatus {
     FAILED_DEPENDENCY(424, "Failed Dependency"),
     /**
      * {@code 425 Too Early}.
-     * @since 5.2
      * @see <a href="https://tools.ietf.org/html/rfc8470">RFC 8470</a>
      */
     TOO_EARLY(425, "Too Early"),
@@ -280,7 +263,6 @@ public enum HttpStatus {
      * {@code 451 Unavailable For Legal Reasons}.
      * @see <a href="https://tools.ietf.org/html/draft-ietf-httpbis-legally-restricted-status-04">
      * An HTTP Status Code to Report Legal Obstacles</a>
-     * @since 4.3
      */
     UNAVAILABLE_FOR_LEGAL_REASONS(451, "Unavailable For Legal Reasons"),
 
@@ -331,19 +313,6 @@ public enum HttpStatus {
      * @see <a href="https://tools.ietf.org/html/rfc5842#section-7.2">WebDAV Binding Extensions</a>
      */
     LOOP_DETECTED(508, "Loop Detected"),
-    /**
-     * {@code 509 Bandwidth Limit Exceeded}
-     * @deprecated since 7.0, this is now unassigned
-     */
-    @Deprecated(since = "7.0")
-    BANDWIDTH_LIMIT_EXCEEDED(509, "Bandwidth Limit Exceeded"),
-    /**
-     * {@code 510 Not Extended}
-     * @see <a href="https://tools.ietf.org/html/rfc2774#section-7">HTTP Extension Framework</a>
-     * @deprecated since 7.0, this is now marked as "historic" and not endorsed by a standards body.
-     */
-    @Deprecated(since = "7.0")
-    NOT_EXTENDED(510, "Not Extended"),
     /**
      * {@code 511 Network Authentication Required}.
      * @see <a href="https://tools.ietf.org/html/rfc6585#section-6">Additional HTTP Status Codes</a>

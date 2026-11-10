@@ -1,6 +1,7 @@
 package remast.marga;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.logging.Logger;
@@ -29,13 +30,13 @@ public class Router {
     private final List<Function<RequestHandler, RequestHandler>> middleware;
     private final RequestHandler notFoundHandler;
 
-    // Middleware-caching state. Middleware is expected to be registered once at startup
-    // (before the first request). Once a request is served, the middleware chain is frozen:
-    // every registered handler is pre-wrapped once, the not-found and 405 handlers are cached,
-    // and any further mutation of the middleware list throws IllegalStateException.
-    private boolean middlewareFrozen;
+    // Routes and middleware are registered during setup. The router freezes when the server starts
+    // or the first request is handled. After that, handlers are pre-wrapped, all routing structures
+    // are read-only, and registration throws IllegalStateException. The volatile write in freeze()
+    // publishes the fully built routing state to request threads.
+    private volatile boolean frozen;
     private RequestHandler wrappedNotFoundHandler;
-    private final Map<String, RequestHandler> wrappedMethodNotAllowedByAllow = new HashMap<>();
+    private final Map<String, RequestHandler> wrappedMethodNotAllowedByAllow = new ConcurrentHashMap<>();
 
     public Router() {
         this.exactRoutesByPath = new LinkedHashMap<>();
@@ -64,8 +65,8 @@ public class Router {
     }
 
     private Response handleRequestInternal(Request request) {
-        if (!middlewareFrozen) {
-            freezeMiddleware();
+        if (!frozen) {
+            freeze();
         }
 
         var method = request.getMethod();
@@ -101,7 +102,8 @@ public class Router {
         addRoute(method, path, handler, null);
     }
 
-    public void addRoute(String method, String path, RequestHandler handler, String description) {
+    public synchronized void addRoute(String method, String path, RequestHandler handler, String description) {
+        requireUnfrozen();
         var normalizedMethod = normalizeMethod(method);
         if (path.contains("${")) {
             addParameterizedRoute(normalizedMethod, path, handler, description);
@@ -109,7 +111,6 @@ public class Router {
         }
 
         var route = new Route(normalizedMethod, handler, description);
-        wrapIfFrozen(route);
         var methodsForPath = exactRoutesByPath.computeIfAbsent(path, ignored -> new LinkedHashMap<>());
         var existing = methodsForPath.put(normalizedMethod, route);
         if (existing != null) {
@@ -121,10 +122,10 @@ public class Router {
         addParameterizedRoute(method, pattern, handler, null);
     }
 
-    public void addParameterizedRoute(String method, String pattern, RequestHandler handler, String description) {
+    public synchronized void addParameterizedRoute(String method, String pattern, RequestHandler handler, String description) {
+        requireUnfrozen();
         var normalizedMethod = normalizeMethod(method);
         var route = new Route(normalizedMethod, handler, description, pattern);
-        wrapIfFrozen(route);
         var routes = parameterizedByMethod.computeIfAbsent(normalizedMethod, ignored -> new ArrayList<>());
         for (var i = 0; i < routes.size(); i++) {
             var existing = routes.get(i);
@@ -203,27 +204,49 @@ public class Router {
         addRoute("OPTIONS", path, handler, description);
     }
 
-    public void use(UnaryOperator<RequestHandler> middleware) {
+    public synchronized void use(UnaryOperator<RequestHandler> middleware) {
         requireUnfrozen();
         this.middleware.add(middleware);
     }
 
     @SafeVarargs
-    public final void use(Function<RequestHandler, RequestHandler>... middlewares) {
+    public final synchronized void use(Function<RequestHandler, RequestHandler>... middlewares) {
         requireUnfrozen();
         this.middleware.addAll(Arrays.asList(middlewares));
     }
 
-    public void clearMiddleware() {
+    public synchronized void clearMiddleware() {
         requireUnfrozen();
         this.middleware.clear();
     }
 
-    public int middlewareCount() {
+    public synchronized int middlewareCount() {
         return this.middleware.size();
     }
 
-    Map<String, Route> getRoutes() {
+    public boolean isFrozen() {
+        return frozen;
+    }
+
+    public synchronized void freeze() {
+        if (frozen) {
+            return;
+        }
+        wrappedNotFoundHandler = applyMiddleware(notFoundHandler);
+        for (var methodsForPath : exactRoutesByPath.values()) {
+            for (var route : methodsForPath.values()) {
+                route.setWrappedHandler(applyMiddleware(route.getHandler()));
+            }
+        }
+        for (var routes : parameterizedByMethod.values()) {
+            for (var route : routes) {
+                route.setWrappedHandler(applyMiddleware(route.getHandler()));
+            }
+        }
+        frozen = true;
+    }
+
+    synchronized Map<String, Route> getRoutes() {
         var allRoutes = new LinkedHashMap<String, Route>();
         for (var entry : exactRoutesByPath.entrySet()) {
             var path = entry.getKey();
@@ -239,7 +262,7 @@ public class Router {
         return allRoutes;
     }
 
-    public void printRouteDescriptions() {
+    public synchronized void printRouteDescriptions() {
         logger.info("Application Routes:");
         for (var entry : exactRoutesByPath.entrySet()) {
             var path = entry.getKey();
@@ -259,42 +282,11 @@ public class Router {
         }
     }
 
-    private void freezeMiddleware() {
-        middlewareFrozen = true;
-        wrappedNotFoundHandler = applyMiddleware(notFoundHandler);
-        for (var methodsForPath : exactRoutesByPath.values()) {
-            for (var route : methodsForPath.values()) {
-                if (route.getWrappedHandler() == null) {
-                    route.setWrappedHandler(applyMiddleware(route.getHandler()));
-                }
-            }
-        }
-        for (var routes : parameterizedByMethod.values()) {
-            for (var route : routes) {
-                if (route.getWrappedHandler() == null) {
-                    route.setWrappedHandler(applyMiddleware(route.getHandler()));
-                }
-            }
-        }
-    }
-
-    private void wrapIfFrozen(Route route) {
-        if (middlewareFrozen) {
-            route.setWrappedHandler(applyMiddleware(route.getHandler()));
-        }
-    }
-
     private RequestHandler wrappedMethodNotAllowedHandler(String allowValue) {
-        var cached = wrappedMethodNotAllowedByAllow.get(allowValue);
-        if (cached != null) {
-            return cached;
-        }
-        RequestHandler baseHandler = ignored ->
-            Response.methodNotAllowed("405 - Method Not Allowed")
-                .header(HttpHeader.ALLOW, allowValue);
-        var wrapped = applyMiddleware(baseHandler);
-        wrappedMethodNotAllowedByAllow.put(allowValue, wrapped);
-        return wrapped;
+        return wrappedMethodNotAllowedByAllow.computeIfAbsent(allowValue, allow ->
+            applyMiddleware(ignored ->
+                Response.methodNotAllowed("405 - Method Not Allowed")
+                    .header(HttpHeader.ALLOW, allow)));
     }
 
     private RequestHandler applyMiddleware(RequestHandler handler) {
@@ -306,8 +298,8 @@ public class Router {
     }
 
     private void requireUnfrozen() {
-        if (middlewareFrozen) {
-            throw new IllegalStateException("Middleware cannot be modified after the first request has been served");
+        if (frozen) {
+            throw new IllegalStateException("Routes and middleware cannot be modified after the router is frozen (server started or first request handled)");
         }
     }
 

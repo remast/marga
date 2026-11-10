@@ -40,6 +40,8 @@ final class HttpServer {
             throw new IllegalStateException("Server is already running");
         }
 
+        router.freeze();
+
         try {
             serverSocket = new ServerSocket();
             serverSocket.bind(new InetSocketAddress(config.getHost(), config.getPort()), config.getAcceptBacklog());

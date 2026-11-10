@@ -1,9 +1,5 @@
 # Known Issues
 
-## Unbounded request head
-
-`readLine` has no length limit and `parseHeaders` has no limit on header count, so a client can exhaust memory. The socket read timeout applies per read, not to the whole request head, so a slow client can hold a connection indefinitely. Enforce request-line and total header size limits (respond with `414` / `431`) and an overall deadline for reading the request head.
-
 ## Malformed request body framing
 
 Invalid or negative `Content-Length` values are treated as zero, and a short read is accepted as a complete body. Reject malformed framing with `400 Bad Request`, including invalid, negative, conflicting, duplicate, or incomplete content lengths. `Transfer-Encoding: chunked` is ignored and the body is treated as empty; reject it with `501` or `411` until supported.

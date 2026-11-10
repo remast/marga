@@ -249,6 +249,62 @@ class HttpWireFormatTest {
         }
     }
 
+    @Test
+    void oversizedRequestLineShouldReturn414() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
+        var serverThread = startServer(router);
+
+        try {
+            var request = "GET /" + "x".repeat(8 * 1024) + " HTTP/1.1\r\n\r\n";
+            var raw = sendRaw(router.getPort(), request);
+            assertTrue(raw.startsWith("HTTP/1.1 414 URI Too Long\r\n"), raw);
+        } finally {
+            stopServer(router, serverThread);
+        }
+    }
+
+    @Test
+    void oversizedTotalHeadersShouldReturn431() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
+        var serverThread = startServer(router);
+
+        try {
+            var request = new StringBuilder("GET / HTTP/1.1\r\n");
+            for (var i = 0; i < 17; i++) {
+                request.append("X-Header-").append(i).append(": ").repeat("x", 4_000).append("\r\n");
+            }
+            request.append("\r\n");
+            var raw = sendRaw(router.getPort(), request.toString());
+            assertTrue(raw.startsWith("HTTP/1.1 431 Request Header Fields Too Large\r\n"), raw);
+        } finally {
+            stopServer(router, serverThread);
+        }
+    }
+
+    @Test
+    void requestHeadDeadlineShouldReturn408DespiteProgress() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(700).build());
+        var serverThread = startServer(router);
+
+        try (var socket = new Socket("127.0.0.1", router.getPort())) {
+            socket.setSoTimeout(3_000);
+            var out = socket.getOutputStream();
+            out.write("GET / HTTP/1.1\r\n".getBytes(StandardCharsets.US_ASCII));
+            out.flush();
+            Thread.sleep(250);
+            out.write("X-One: a\r\n".getBytes(StandardCharsets.US_ASCII));
+            out.flush();
+            Thread.sleep(250);
+            out.write("X-Two: b\r\n".getBytes(StandardCharsets.US_ASCII));
+            out.flush();
+
+            var raw = new String(readAll(socket.getInputStream()), StandardCharsets.ISO_8859_1);
+            assertTrue(raw.startsWith("HTTP/1.1 408 Request Timeout\r\n"), raw);
+        } finally {
+            stopServer(router, serverThread);
+        }
+    }
+
     private static String sendRaw(int port, String request) throws IOException {
         return new String(sendRawBytes(port, request), StandardCharsets.ISO_8859_1);
     }
@@ -268,6 +324,22 @@ class HttpWireFormatTest {
                 return readAll(in);
             }
         }
+    }
+
+    private static Thread startServer(HttpRouter router) throws InterruptedException {
+        var serverThread = Thread.ofVirtual().start(() -> {
+            try {
+                router.run();
+            } catch (IOException ignored) {
+            }
+        });
+        waitForServerPort(router);
+        return serverThread;
+    }
+
+    private static void stopServer(HttpRouter router, Thread serverThread) throws InterruptedException {
+        router.shutdown();
+        serverThread.join(2_000);
     }
 
     private static byte[] readAll(InputStream in) throws IOException {

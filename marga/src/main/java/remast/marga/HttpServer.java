@@ -6,6 +6,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
@@ -18,6 +19,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 final class HttpServer {
+    private static final int MAX_REQUEST_LINE_BYTES = 8 * 1024;
+    private static final int MAX_HEADER_BYTES = 64 * 1024;
     private static final Logger logger = Logger.getLogger(HttpServer.class.getName());
 
     private final Router router;
@@ -90,8 +93,19 @@ final class HttpServer {
     private void handleSocketRequest(Socket clientSocket) {
         try (clientSocket; var in = new BufferedInputStream(clientSocket.getInputStream()); var out = clientSocket.getOutputStream()) {
             clientSocket.setSoTimeout(config.getReadTimeoutMs());
+            var requestHeadDeadline = new RequestHeadDeadline(clientSocket, config.getReadTimeoutMs());
 
-            var requestLine = readLine(in);
+            ParsedLine parsedRequestLine;
+            try {
+                parsedRequestLine = readLine(in, MAX_REQUEST_LINE_BYTES, requestHeadDeadline);
+            } catch (RequestHeadTooLargeException e) {
+                responseWriter.write(out, new Response("414 - URI Too Long", HttpStatus.URI_TOO_LONG), null);
+                return;
+            } catch (SocketTimeoutException e) {
+                responseWriter.write(out, new Response("408 - Request Timeout", HttpStatus.REQUEST_TIMEOUT), null);
+                return;
+            }
+            var requestLine = parsedRequestLine == null ? null : parsedRequestLine.value();
             if (requestLine == null || requestLine.isBlank()) {
                 return;
             }
@@ -106,7 +120,17 @@ final class HttpServer {
             var fullPath = requestParts[1];
             var path = extractPath(fullPath);
             var queryParams = parseQueryParameters(fullPath);
-            var headers = parseHeaders(in);
+            Map<String, String> headers;
+            try {
+                headers = parseHeaders(in, requestHeadDeadline);
+            } catch (RequestHeadTooLargeException e) {
+                responseWriter.write(out, new Response("431 - Request Header Fields Too Large", HttpStatus.REQUEST_HEADER_FIELDS_TOO_LARGE), method);
+                return;
+            } catch (SocketTimeoutException e) {
+                responseWriter.write(out, new Response("408 - Request Timeout", HttpStatus.REQUEST_TIMEOUT), method);
+                return;
+            }
+            clientSocket.setSoTimeout(config.getReadTimeoutMs());
 
             var contentLength = parseContentLength(headers);
             if (contentLength > config.getMaxRequestBodyBytes()) {
@@ -139,10 +163,15 @@ final class HttpServer {
         }
     }
 
-    private Map<String, String> parseHeaders(BufferedInputStream in) throws IOException {
+    private Map<String, String> parseHeaders(BufferedInputStream in, RequestHeadDeadline deadline) throws IOException {
         var headers = new HashMap<String, String>();
+        var bytesRead = 0;
         while (true) {
-            var headerLine = readLine(in);
+            var parsedLine = readLine(in, MAX_HEADER_BYTES - bytesRead, deadline);
+            if (parsedLine != null) {
+                bytesRead += parsedLine.bytesRead();
+            }
+            var headerLine = parsedLine == null ? null : parsedLine.value();
             if (headerLine == null || headerLine.isEmpty()) {
                 break;
             }
@@ -157,12 +186,21 @@ final class HttpServer {
         return headers;
     }
 
-    private String readLine(BufferedInputStream in) throws IOException {
+    private ParsedLine readLine(BufferedInputStream in, int maxBytes, RequestHeadDeadline deadline) throws IOException {
         var line = new StringBuilder();
         int current;
+        var bytesRead = 0;
         var sawCarriageReturn = false;
 
-        while ((current = in.read()) != -1) {
+        while (true) {
+            deadline.prepareRead();
+            current = in.read();
+            if (current == -1) {
+                break;
+            }
+            if (++bytesRead > maxBytes) {
+                throw new RequestHeadTooLargeException();
+            }
             if (current == '\r') {
                 sawCarriageReturn = true;
                 continue;
@@ -181,7 +219,39 @@ final class HttpServer {
             return null;
         }
 
-        return line.toString();
+        return new ParsedLine(line.toString(), bytesRead);
+    }
+
+    private record ParsedLine(String value, int bytesRead) {
+    }
+
+    private static final class RequestHeadTooLargeException extends IOException {
+    }
+
+    private final class RequestHeadDeadline {
+        private final Socket socket;
+        private final long deadlineNanos;
+        private int appliedTimeoutMs;
+
+        private RequestHeadDeadline(Socket socket, int timeoutMs) {
+            this.socket = socket;
+            this.deadlineNanos = System.nanoTime() + timeoutMs * 1_000_000L;
+            this.appliedTimeoutMs = timeoutMs;
+        }
+
+        private void prepareRead() throws IOException {
+            var remainingNanos = deadlineNanos - System.nanoTime();
+            if (remainingNanos <= 0) {
+                throw new SocketTimeoutException("Request head deadline exceeded");
+            }
+
+            var remainingMs = Math.clamp((remainingNanos + 999_999L) / 1_000_000L, 1, Integer.MAX_VALUE);
+            var timeoutMs = Math.min(config.getReadTimeoutMs(), remainingMs);
+            if (timeoutMs < appliedTimeoutMs) {
+                socket.setSoTimeout(timeoutMs);
+                appliedTimeoutMs = timeoutMs;
+            }
+        }
     }
 
     private String extractPath(String fullPath) {

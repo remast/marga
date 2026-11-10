@@ -6,6 +6,9 @@ GET http://localhost:8080/
 ### 2. Hello endpoint - Greeting
 GET http://localhost:8080/hello
 
+### 3. Greeting with name param
+GET http://localhost:8080/greet/frank
+
 ### 3. API endpoint - API information
 GET http://localhost:8080/api
 

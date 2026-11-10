@@ -1,13 +1,8 @@
 package remast.marga;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.logging.Logger;
 import remast.marga.handlers.DefaultNotFoundHandler;
 
@@ -32,7 +27,7 @@ public class Router {
     // First-match-wins during lookup replaces the prior stream/filter/max-per-request.
     private final Map<String, List<Route>> parameterizedByMethod;
     private final List<Function<RequestHandler, RequestHandler>> middleware;
-    private RequestHandler notFoundHandler;
+    private final RequestHandler notFoundHandler;
 
     // Middleware-caching state. Middleware is expected to be registered once at startup
     // (before the first request). Once a request is served, the middleware chain is frozen:
@@ -208,17 +203,7 @@ public class Router {
         addRoute("OPTIONS", path, handler, description);
     }
 
-    public void setNotFoundHandler(RequestHandler notFoundHandler) {
-        if (notFoundHandler == null) {
-            throw new IllegalArgumentException("notFoundHandler cannot be null");
-        }
-        if (middlewareFrozen) {
-            throw new IllegalStateException("Cannot change notFoundHandler after the first request has been served");
-        }
-        this.notFoundHandler = notFoundHandler;
-    }
-
-    public void use(Function<RequestHandler, RequestHandler> middleware) {
+    public void use(UnaryOperator<RequestHandler> middleware) {
         requireUnfrozen();
         this.middleware.add(middleware);
     }
@@ -226,9 +211,7 @@ public class Router {
     @SafeVarargs
     public final void use(Function<RequestHandler, RequestHandler>... middlewares) {
         requireUnfrozen();
-        for (var middlewareItem : middlewares) {
-            this.middleware.add(middlewareItem);
-        }
+        this.middleware.addAll(Arrays.asList(middlewares));
     }
 
     public void clearMiddleware() {

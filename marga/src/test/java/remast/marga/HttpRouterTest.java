@@ -292,6 +292,36 @@ class HttpRouterTest {
     }
 
     @Test
+    void headFallsBackToExactGetRoute() {
+        router.GET("/test", testHandler);
+
+        var response = router.handleRequest("HEAD", "/test");
+
+        assertEquals("Test response", response.getBody());
+        assertEquals(200, response.getStatusCode());
+    }
+
+    @Test
+    void headFallsBackToParameterizedGetRoute() {
+        router.GET("/users/${id}", userHandler);
+
+        var response = router.handleRequest("HEAD", "/users/123");
+
+        assertEquals("User response", response.getBody());
+        assertEquals(200, response.getStatusCode());
+    }
+
+    @Test
+    void explicitHeadRouteTakesPrecedenceOverGetFallback() {
+        router.GET("/test", testHandler);
+        router.HEAD("/test", userHandler);
+
+        var response = router.handleRequest("HEAD", "/test");
+
+        assertEquals("User response", response.getBody());
+    }
+
+    @Test
     void headMethodWithDescription() {
         router.HEAD("/test", testHandler, "Get headers only");
         

@@ -89,6 +89,25 @@ public class Router {
             }
         }
 
+        // RFC 9110 §9.3.2 defines HEAD as GET without response content, so fall back to GET routes.
+        if (HEAD.equals(method)) {
+            if (methodsForPath != null) {
+                var exactGetRoute = methodsForPath.get(GET);
+                if (exactGetRoute != null) {
+                    return exactGetRoute.getWrappedHandler().handle(request);
+                }
+            }
+
+            candidates = parameterizedByMethod.get(GET);
+            if (candidates != null) {
+                for (var route : candidates) {
+                    if (route.matchInto(path, request)) {
+                        return route.getWrappedHandler().handle(request);
+                    }
+                }
+            }
+        }
+
         var allowedMethods = collectAllowedMethodsForPath(path);
         if (!allowedMethods.isEmpty()) {
             var allowValue = String.join(", ", allowedMethods);

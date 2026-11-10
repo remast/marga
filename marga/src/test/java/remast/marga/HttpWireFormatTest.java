@@ -79,7 +79,7 @@ class HttpWireFormatTest {
     @Test
     void headResponseShouldNotWriteBodyButPreserveContentLength() throws Exception {
         var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
-        router.HEAD("/head", request -> Response.ok("pong"));
+        router.GET("/head", request -> Response.ok("pong"));
 
         var serverThread = Thread.ofVirtual().start(() -> {
             try {
@@ -91,6 +91,7 @@ class HttpWireFormatTest {
         waitForServerPort(router);
         try {
             var raw = sendRaw(router.getPort(), "HEAD /head HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+            assertTrue(raw.startsWith("HTTP/1.1 200 OK\r\n"), "unexpected status: " + raw);
             assertTrue(raw.contains("Content-Length: 4\r\n"), "missing representation length: " + raw);
             assertEquals("", responseBody(raw));
         } finally {

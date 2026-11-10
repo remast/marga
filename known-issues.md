@@ -12,10 +12,6 @@ On `400` and `413` the socket is closed without draining the unread request body
 
 Clients sending `Expect: 100-continue` (e.g. curl for larger bodies) wait for a timeout before sending the body.
 
-## HEAD not served by GET routes
-
-A HEAD request to a GET-only route returns `405`. RFC 9110 requires HEAD wherever GET is supported. The response writer already omits the body for HEAD, so the router only needs to fall back to the GET route.
-
 ## Lenient request-line parsing
 
 The request line is split on spaces without checking for exactly three parts or a valid `HTTP/1.x` version (no `505`). Absolute-form targets (`http://host/path`) are not handled. The path is neither percent-decoded nor normalized, so path parameters remain encoded while query parameters are decoded.

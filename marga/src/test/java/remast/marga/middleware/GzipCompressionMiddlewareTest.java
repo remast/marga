@@ -1,9 +1,16 @@
 package remast.marga.middleware;
 
 import org.junit.jupiter.api.Test;
+import remast.marga.HttpStatus;
 import remast.marga.MediaType;
 import remast.marga.Request;
 import remast.marga.Response;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.zip.GZIPInputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,7 +21,7 @@ class GzipCompressionMiddlewareTest {
         var middleware = new GzipCompressionMiddleware(100); // Low threshold for testing
         var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent()));
         
-        var request = new Request("GET", "/test");
+        var request = gzipRequest();
         var response = handler.handle(request);
         
         assertEquals("gzip", response.getHeader("Content-Encoding"));
@@ -27,7 +34,7 @@ class GzipCompressionMiddlewareTest {
         var middleware = new GzipCompressionMiddleware(1000);
         var handler = middleware.create().apply(request -> Response.ok("Small content"));
         
-        var request = new Request("GET", "/test");
+        var request = gzipRequest();
         var response = handler.handle(request);
         
         assertNull(response.getHeader("Content-Encoding"));
@@ -39,7 +46,7 @@ class GzipCompressionMiddlewareTest {
         var middleware = new GzipCompressionMiddleware(100);
         var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent(), MediaType.APPLICATION_GZIP));
         
-        var request = new Request("GET", "/test");
+        var request = gzipRequest();
         var response = handler.handle(request);
         
         assertNull(response.getHeader("Content-Encoding"));
@@ -50,7 +57,7 @@ class GzipCompressionMiddlewareTest {
         var middleware = new GzipCompressionMiddleware(100);
         var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent(), MediaType.IMAGE_JPEG));
         
-        var request = new Request("GET", "/test");
+        var request = gzipRequest();
         var response = handler.handle(request);
         
         assertNull(response.getHeader("Content-Encoding"));
@@ -61,7 +68,7 @@ class GzipCompressionMiddlewareTest {
         var middleware = new GzipCompressionMiddleware(100);
         var handler = middleware.create().apply(request -> Response.serverError(createLargeTextContent()));
         
-        var request = new Request("GET", "/test");
+        var request = gzipRequest();
         var response = handler.handle(request);
         
         assertNull(response.getHeader("Content-Encoding"));
@@ -72,7 +79,7 @@ class GzipCompressionMiddlewareTest {
         var middleware = new GzipCompressionMiddleware(100);
         var handler = middleware.create().apply(request -> Response.noContent());
         
-        var request = new Request("GET", "/test");
+        var request = gzipRequest();
         var response = handler.handle(request);
         
         assertNull(response.getHeader("Content-Encoding"));
@@ -84,7 +91,7 @@ class GzipCompressionMiddlewareTest {
         var jsonContent = createLargeJsonContent();
         var handler = middleware.create().apply(request -> Response.json(jsonContent));
         
-        var request = new Request("GET", "/test");
+        var request = gzipRequest();
         var response = handler.handle(request);
         
         assertEquals("gzip", response.getHeader("Content-Encoding"));
@@ -98,7 +105,7 @@ class GzipCompressionMiddlewareTest {
         var htmlContent = createLargeHtmlContent();
         var handler = middleware.create().apply(request -> Response.html(htmlContent));
         
-        var request = new Request("GET", "/test");
+        var request = gzipRequest();
         var response = handler.handle(request);
         
         assertEquals("gzip", response.getHeader("Content-Encoding"));
@@ -112,7 +119,7 @@ class GzipCompressionMiddlewareTest {
         var originalContent = createLargeTextContent();
         var handler = middleware.create().apply(request -> Response.ok(originalContent));
         
-        var request = new Request("GET", "/test");
+        var request = gzipRequest();
         var response = handler.handle(request);
         
         // Should still have a response, even if compression fails
@@ -126,13 +133,187 @@ class GzipCompressionMiddlewareTest {
         var content = createMediumTextContent();
         var handler = middleware.create().apply(request -> Response.ok(content));
         
-        var request = new Request("GET", "/test");
+        var request = gzipRequest();
         var response = handler.handle(request);
         
         assertEquals("gzip", response.getHeader("Content-Encoding"));
         assertTrue(response.isBinary());
     }
     
+    @Test
+    void shouldNotCompressWithoutAcceptEncoding() {
+        var middleware = new GzipCompressionMiddleware(100);
+        var content = createLargeTextContent();
+        var handler = middleware.create().apply(request -> Response.ok(content));
+
+        var response = handler.handle(new Request("GET", "/test"));
+
+        assertNull(response.getHeader("Content-Encoding"));
+        assertEquals("Accept-Encoding", response.getHeader("Vary"));
+        assertEquals(content, response.getBody());
+    }
+
+    @Test
+    void shouldNotCompressWhenGzipNotAccepted() {
+        var middleware = new GzipCompressionMiddleware(100);
+        var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent()));
+
+        var response = handler.handle(requestWithAcceptEncoding("br, deflate"));
+
+        assertNull(response.getHeader("Content-Encoding"));
+    }
+
+    @Test
+    void shouldNotCompressWhenGzipQualityIsZero() {
+        var middleware = new GzipCompressionMiddleware(100);
+        var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent()));
+
+        var response = handler.handle(requestWithAcceptEncoding("gzip;q=0, *;q=1"));
+
+        assertNull(response.getHeader("Content-Encoding"));
+    }
+
+    @Test
+    void shouldCompressWhenWildcardAccepted() {
+        var middleware = new GzipCompressionMiddleware(100);
+        var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent()));
+
+        var response = handler.handle(requestWithAcceptEncoding("*"));
+
+        assertEquals("gzip", response.getHeader("Content-Encoding"));
+    }
+
+    @Test
+    void shouldMatchAcceptEncodingCaseInsensitively() {
+        var middleware = new GzipCompressionMiddleware(100);
+        var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent()));
+
+        var response = handler.handle(requestWithAcceptEncoding("deflate, GZIP;Q=0.5"));
+
+        assertEquals("gzip", response.getHeader("Content-Encoding"));
+    }
+
+    @Test
+    void shouldAddVaryHeaderWhenCompressing() {
+        var middleware = new GzipCompressionMiddleware(100);
+        var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent()));
+
+        var response = handler.handle(gzipRequest());
+
+        assertEquals("Accept-Encoding", response.getHeader("Vary"));
+    }
+
+    @Test
+    void shouldAppendToExistingVaryHeader() {
+        var middleware = new GzipCompressionMiddleware(100);
+        var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent()).header("Vary", "Origin"));
+
+        var response = handler.handle(gzipRequest());
+
+        assertEquals("Origin, Accept-Encoding", response.getHeader("Vary"));
+    }
+
+    @Test
+    void shouldNotDuplicateVaryAcceptEncoding() {
+        var middleware = new GzipCompressionMiddleware(100);
+        var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent()).header("Vary", "accept-encoding"));
+
+        var response = handler.handle(gzipRequest());
+
+        assertEquals("accept-encoding", response.getHeader("Vary"));
+    }
+
+    @Test
+    void shouldPreserveResponseHeaders() {
+        var middleware = new GzipCompressionMiddleware(100);
+        var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent())
+            .header("X-Custom", "value")
+            .header("Cache-Control", "no-cache"));
+
+        var response = handler.handle(gzipRequest());
+
+        assertEquals("gzip", response.getHeader("Content-Encoding"));
+        assertEquals("value", response.getHeader("X-Custom"));
+        assertEquals("no-cache", response.getHeader("Cache-Control"));
+        assertEquals("text/plain", response.getHeader("Content-Type"));
+    }
+
+    @Test
+    void shouldCompressBodyUsingResponseCharset() throws IOException {
+        var middleware = new GzipCompressionMiddleware(100);
+        var content = "Grüße aus Köln. ".repeat(100);
+        var handler = middleware.create().apply(request ->
+            new Response(content, HttpStatus.OK, MediaType.TEXT_PLAIN, StandardCharsets.ISO_8859_1));
+
+        var response = handler.handle(gzipRequest());
+
+        assertEquals("gzip", response.getHeader("Content-Encoding"));
+        assertEquals(StandardCharsets.ISO_8859_1, response.getCharset());
+        assertArrayEquals(content.getBytes(StandardCharsets.ISO_8859_1), gunzip(response.getBodyBytes()));
+    }
+
+    @Test
+    void shouldCompressBinaryResponseWithCompressibleType() throws IOException {
+        var middleware = new GzipCompressionMiddleware(100);
+        var bytes = createLargeJsonContent().getBytes(StandardCharsets.UTF_8);
+        var handler = middleware.create().apply(request -> new Response(bytes, 200, MediaType.APPLICATION_JSON));
+
+        var response = handler.handle(gzipRequest());
+
+        assertEquals("gzip", response.getHeader("Content-Encoding"));
+        assertArrayEquals(bytes, gunzip(response.getBodyBytes()));
+    }
+
+    @Test
+    void shouldNotCompressAlreadyEncodedResponse() {
+        var middleware = new GzipCompressionMiddleware(100);
+        var content = createLargeTextContent();
+        var handler = middleware.create().apply(request -> Response.ok(content).header("Content-Encoding", "br"));
+
+        var response = handler.handle(gzipRequest());
+
+        assertEquals("br", response.getHeader("Content-Encoding"));
+        assertEquals(content, response.getBody());
+    }
+
+    @Test
+    void shouldNotCompressNonTextApplicationTypes() {
+        var middleware = new GzipCompressionMiddleware(100);
+        for (var type : new String[] {"application/pdf", "application/octet-stream", "application/zip", "application/wasm"}) {
+            var handler = middleware.create().apply(request -> Response.ok(createLargeTextContent(), new MediaType(type)));
+
+            var response = handler.handle(gzipRequest());
+
+            assertNull(response.getHeader("Content-Encoding"), type);
+        }
+    }
+
+    @Test
+    void shouldCompressStructuredSyntaxSuffixTypes() {
+        var middleware = new GzipCompressionMiddleware(100);
+        for (var type : new String[] {"application/problem+json", "application/atom+xml", "image/svg+xml"}) {
+            var handler = middleware.create().apply(request -> Response.ok(createLargeJsonContent(), new MediaType(type)));
+
+            var response = handler.handle(gzipRequest());
+
+            assertEquals("gzip", response.getHeader("Content-Encoding"), type);
+        }
+    }
+
+    private static Request gzipRequest() {
+        return requestWithAcceptEncoding("gzip, deflate");
+    }
+
+    private static Request requestWithAcceptEncoding(String value) {
+        return new Request("GET", "/test", Map.of("accept-encoding", value));
+    }
+
+    private static byte[] gunzip(byte[] data) throws IOException {
+        try (var input = new GZIPInputStream(new ByteArrayInputStream(data))) {
+            return input.readAllBytes();
+        }
+    }
+
     private String createLargeTextContent() {
         var sb = new StringBuilder();
         for (int i = 0; i < 1000; i++) {

@@ -71,12 +71,14 @@ class HttpWireIntegrationTest {
 
             var request = HttpRequest.newBuilder()
                 .uri(URI.create("http://127.0.0.1:" + router.getPort() + "/gzip"))
+                .header("Accept-Encoding", "gzip")
                 .GET()
                 .build();
 
             var response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
             assertEquals(200, response.statusCode());
             assertEquals("gzip", response.headers().firstValue("Content-Encoding").orElse(null));
+            assertEquals("Accept-Encoding", response.headers().firstValue("Vary").orElse(null));
 
             var decoded = gunzip(response.body());
             assertEquals("hello ".repeat(2_000), decoded);

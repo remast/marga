@@ -4,10 +4,6 @@
 
 `readLine` has no length limit and `parseHeaders` has no limit on header count, so a client can exhaust memory. The socket read timeout applies per read, not to the whole request head, so a slow client can hold a connection indefinitely. Enforce request-line and total header size limits (respond with `414` / `431`) and an overall deadline for reading the request head.
 
-## Gzip middleware ignores content negotiation
-
-`GzipCompressionMiddleware` compresses without checking `Accept-Encoding` and does not add `Vary: Accept-Encoding`. It also encodes the body as UTF-8 regardless of the response charset, drops all response headers except `Content-Type`, and treats every `application/*` media type as compressible.
-
 ## Case-sensitive response headers
 
 `Response` stores headers in a case-sensitive `HashMap`. A handler setting `content-length` or `content-type` results in duplicate, conflicting headers on the wire because the writer adds the canonical names. `Response.getMediaType()` only finds the exact `Content-Type` key. Use a case-insensitive map, as `Request` does.

@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.function.Function;
 
-public class HttpRouter {
+public class HttpRouter implements AutoCloseable {
     private final Router router;
     private final HttpServer server;
 
@@ -15,7 +15,6 @@ public class HttpRouter {
     public HttpRouter(Config config) {
         this.router = new Router();
         this.server = new HttpServer(router, config);
-        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
     }
 
     public Response handleRequest(String method, String path) {
@@ -145,5 +144,10 @@ public class HttpRouter {
 
     public void shutdown() {
         server.shutdown();
+    }
+
+    @Override
+    public void close() {
+        shutdown();
     }
 }

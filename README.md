@@ -22,24 +22,24 @@ import static remast.marga.MediaType.*;
 
 public class App {
     public static void main(String[] args) throws IOException {
-        var router = new HttpRouter();
-        
-        // Simple routes
-        router.GET("/", request -> 
-            Response.ok("<h1>Welcome to Marga!</h1>"));
+        try (var router = new HttpRouter()) {
+            // Simple routes
+            router.GET("/", request ->
+                    Response.ok("<h1>Welcome to Marga!</h1>"));
 
-        router.GET("/api/users", request -> 
-            Response.ok("{\"users\": []}")
-                    .mediaType(APPLICATION_JSON));
-            
-        // Parameterized routes
-        router.GET("/users/${id}", request -> {
-            var userId = request.pathParam("id");
-            return Response.ok("User ID: " + userId);
-        });
-        
-        // Run the server
-        router.run();
+            router.GET("/api/users", request ->
+                    Response.ok("{\"users\": []}")
+                            .mediaType(APPLICATION_JSON));
+
+            // Parameterized routes
+            router.GET("/users/${id}", request -> {
+                var userId = request.pathParam("id");
+                return Response.ok("User ID: " + userId);
+            });
+
+            // Run the server
+            router.run();
+        }
     }
 }
 ```

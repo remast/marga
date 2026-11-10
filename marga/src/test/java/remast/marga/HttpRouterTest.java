@@ -196,6 +196,11 @@ class HttpRouterTest {
         assertDoesNotThrow(() -> router.shutdown());
     }
 
+    @Test
+    void close() {
+        assertDoesNotThrow(() -> router.close());
+    }
+
     // Tests for HTTP method-specific convenience methods
     @Test
     void getMethod() {

@@ -11,24 +11,25 @@ import java.io.IOException;
 
 public class App {
     public static void main(String[] args) throws IOException {
-        var router = new HttpRouter();
+        try (var router = new HttpRouter()) {
 
-        // Add middleware (error handler first so it wraps everything)
-        router.use(ErrorHandlingMiddleware.create());
-        router.use(LoggingMiddleware.create());
-        router.use(TimingMiddleware.create());
+            // Add middleware (error handler first so it wraps everything)
+            router.use(ErrorHandlingMiddleware.create());
+            router.use(LoggingMiddleware.create());
+            router.use(TimingMiddleware.create());
 
-        // Register routes
-        router.GET("/",
-                request -> Response.ok("<html><body><h1>Welcome to Marga!</h1></body></html>")
-                        .mediaType(MediaType.TEXT_HTML),
-                "Welcome to Marga!");
-        router.GET("/hello", request -> Response.ok("Hello!"));
-        router.GET("/greet/${name}", new GreetHandler(), "Greet with name parameter");
+            // Register routes
+            router.GET("/",
+                    request -> Response.ok("<html><body><h1>Welcome to Marga!</h1></body></html>")
+                            .mediaType(MediaType.TEXT_HTML),
+                    "Welcome to Marga!");
+            router.GET("/hello", request -> Response.ok("Hello!"));
+            router.GET("/greet/${name}", new GreetHandler(), "Greet with name parameter");
 
-        router.printRouteDescriptions();
+            router.printRouteDescriptions();
 
-        router.run();
+            router.run();
+        }
     }
 
 }

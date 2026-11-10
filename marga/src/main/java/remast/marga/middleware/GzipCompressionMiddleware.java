@@ -174,9 +174,11 @@ public class GzipCompressionMiddleware {
 
     private static Response copyWithBody(Response original, byte[] body) {
         var copy = new Response(body, original.getStatusCode(), null, original.getCharset());
-        for (var entry : original.getHeaders().entrySet()) {
+        for (var entry : original.getAllHeaders().entrySet()) {
             if (!entry.getKey().equalsIgnoreCase(HttpHeader.CONTENT_LENGTH.getValue())) {
-                copy.header(entry.getKey(), entry.getValue());
+                for (var value : entry.getValue()) {
+                    copy.addHeader(entry.getKey(), value);
+                }
             }
         }
         return copy;

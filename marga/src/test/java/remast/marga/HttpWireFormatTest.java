@@ -133,6 +133,28 @@ class HttpWireFormatTest {
     }
 
     @Test
+    void repeatedResponseHeadersShouldBeWrittenAsSeparateFields() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
+        router.GET("/cookies", request -> Response.ok("ok")
+            .addHeader(HttpHeader.SET_COOKIE, "first=1; Path=/")
+            .addHeader("set-cookie", "second=2; Path=/")
+        );
+
+        var serverThread = startServer(router);
+        try {
+            var raw = sendRaw(router.getPort(), "GET /cookies HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+            var headerBlock = raw.substring(0, raw.indexOf("\r\n\r\n"));
+            var cookieHeaders = headerBlock.lines()
+                .filter(line -> line.regionMatches(true, 0, "Set-Cookie:", 0, "Set-Cookie:".length()))
+                .toList();
+
+            assertEquals(java.util.List.of("Set-Cookie: first=1; Path=/", "Set-Cookie: second=2; Path=/"), cookieHeaders);
+        } finally {
+            stopServer(router, serverThread);
+        }
+    }
+
+    @Test
     void noContentAndNotModifiedResponsesShouldNotWriteBodies() throws Exception {
         var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
         router.GET("/no-content", request -> new Response("ignored", HttpStatus.NO_CONTENT));

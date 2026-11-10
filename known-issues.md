@@ -20,10 +20,6 @@ The request line is split on spaces without checking for exactly three parts or 
 
 Repeated request headers overwrite each other. Whitespace before the colon is accepted, and lines without a colon are silently dropped. Bytes are cast directly to `char`, so the request line and headers are decoded as Latin-1 and raw UTF-8 is garbled.
 
-## Repeated response headers unsupported
-
-`Response` headers are a `Map<String, String>`, so a header cannot be sent more than once (e.g. multiple `Set-Cookie`).
-
 ## Incomplete response validation
 
 Header values are only checked for CR/LF; NUL and other control characters pass. A handler returning a `1xx` status sends it as the final response.

@@ -2,14 +2,17 @@ package remast.marga;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
 public class Response {
     private final byte[] body;
     private final int statusCode;
-    private final Map<String, String> headers;
+    private final Map<String, List<String>> headers;
     private final Charset charset;
     private final boolean binary;
     
@@ -44,7 +47,7 @@ public class Response {
         this.statusCode = statusCode;
         this.headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         if (mediaType != null) {
-            this.headers.put(HttpHeader.CONTENT_TYPE.getValue(), mediaType.getValue());
+            setHeader(HttpHeader.CONTENT_TYPE.getValue(), mediaType.getValue());
         }
     }
      
@@ -59,13 +62,13 @@ public class Response {
         this.statusCode = statusCode;
         this.headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         if (mediaType != null) {
-            this.headers.put(HttpHeader.CONTENT_TYPE.getValue(), mediaType.getValue());
+            setHeader(HttpHeader.CONTENT_TYPE.getValue(), mediaType.getValue());
         }
     }
 
     public Response mediaType(MediaType mediaType) {
         if (mediaType != null) {
-            this.headers.put(HttpHeader.CONTENT_TYPE.getValue(), mediaType.getValue());
+            setHeader(HttpHeader.CONTENT_TYPE.getValue(), mediaType.getValue());
         }
         return this;
     }
@@ -87,7 +90,11 @@ public class Response {
     }
     
     public MediaType getMediaType() {
-        String contentType = this.headers.get(HttpHeader.CONTENT_TYPE.getValue());
+        var contentTypes = this.headers.get(HttpHeader.CONTENT_TYPE.getValue());
+        if (contentTypes == null || contentTypes.isEmpty()) {
+            return null;
+        }
+        var contentType = contentTypes.getLast();
         if (contentType == null) {
             return null;
         }
@@ -101,26 +108,52 @@ public class Response {
     
     public Map<String, String> getHeaders() {
         var copy = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
-        copy.putAll(headers);
+        headers.forEach((name, values) -> copy.put(name, values.getLast()));
         return copy;
+    }
+
+    public List<String> getHeaderValues(String name) {
+        var values = headers.get(name);
+        return values == null ? List.of() : Collections.unmodifiableList(new ArrayList<>(values));
+    }
+
+    public Map<String, List<String>> getAllHeaders() {
+        var copy = new TreeMap<String, List<String>>(String.CASE_INSENSITIVE_ORDER);
+        headers.forEach((name, values) -> copy.put(name, Collections.unmodifiableList(new ArrayList<>(values))));
+        return Collections.unmodifiableMap(copy);
     }
     
     public Response header(String name, String value) {
-        this.headers.put(name, value);
+        setHeader(name, value);
         return this;
     }
     
     public Response header(HttpHeader header, String value) {
-        this.headers.put(header.getValue(), value);
+        return header(header.getValue(), value);
+    }
+
+    public Response addHeader(String name, String value) {
+        headers.computeIfAbsent(name, ignored -> new ArrayList<>()).add(value);
         return this;
     }
-    
-    public String getHeader(String name) {
-        return this.headers.get(name);
+
+    public Response addHeader(HttpHeader header, String value) {
+        return addHeader(header.getValue(), value);
     }
-    
+
+    public String getHeader(String name) {
+        var values = this.headers.get(name);
+        return values == null ? null : values.getLast();
+    }
+
     public String getHeader(HttpHeader header) {
-        return this.headers.get(header.getValue());
+        return getHeader(header.getValue());
+    }
+
+    private void setHeader(String name, String value) {
+        var values = new ArrayList<String>();
+        values.add(value);
+        headers.put(name, values);
     }
     
     public static Response ok(String body) {

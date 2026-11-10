@@ -6,6 +6,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -14,30 +16,34 @@ final class HttpResponseWriter {
 
     void write(OutputStream outputStream, Response response, String requestMethod) throws IOException {
         var bodyBytes = response.getBodyBytes();
-        var headers = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
-        headers.putAll(response.getHeaders());
+        var headers = new TreeMap<String, List<String>>(String.CASE_INSENSITIVE_ORDER);
+        response.getAllHeaders().forEach((name, values) -> headers.put(name, new ArrayList<>(values)));
 
         if (!containsHeader(headers, HttpHeader.CONTENT_TYPE.getValue()) && response.getMediaType() != null) {
-            headers.put(HttpHeader.CONTENT_TYPE.getValue(), response.getMediaType().getValue());
+            headers.put(HttpHeader.CONTENT_TYPE.getValue(), new ArrayList<>(List.of(response.getMediaType().getValue())));
         }
 
         appendCharsetIfNeeded(headers, response);
         if (mustNotSendContentLength(response.getStatusCode())) {
             removeHeader(headers, HttpHeader.CONTENT_LENGTH.getValue());
         } else {
-            headers.put(HttpHeader.CONTENT_LENGTH.getValue(), String.valueOf(bodyBytes.length));
+            setHeader(headers, HttpHeader.CONTENT_LENGTH.getValue(), String.valueOf(bodyBytes.length));
         }
-        headers.putIfAbsent(HttpHeader.CONNECTION.getValue(), "close");
-        headers.putIfAbsent(HttpHeader.DATE.getValue(), rfc1123Now());
+        headers.putIfAbsent(HttpHeader.CONNECTION.getValue(), new ArrayList<>(List.of("close")));
+        headers.putIfAbsent(HttpHeader.DATE.getValue(), new ArrayList<>(List.of(rfc1123Now())));
 
         for (var entry : headers.entrySet()) {
             validateHeaderName(entry.getKey());
-            validateHeaderValue(entry.getKey(), entry.getValue());
+            for (var value : entry.getValue()) {
+                validateHeaderValue(entry.getKey(), value);
+            }
         }
 
         writeAsciiLine(outputStream, buildStatusLine(response.getStatusCode()));
         for (var entry : headers.entrySet()) {
-            writeAsciiLine(outputStream, entry.getKey() + ": " + entry.getValue());
+            for (var value : entry.getValue()) {
+                writeAsciiLine(outputStream, entry.getKey() + ": " + value);
+            }
         }
         writeAsciiLine(outputStream, "");
         if (shouldWriteBody(requestMethod, response.getStatusCode())) {
@@ -59,13 +65,14 @@ final class HttpResponseWriter {
         outputStream.write(CRLF.getBytes(StandardCharsets.US_ASCII));
     }
 
-    private static void appendCharsetIfNeeded(Map<String, String> headers, Response response) {
+    private static void appendCharsetIfNeeded(Map<String, List<String>> headers, Response response) {
         var headerName = findHeaderName(headers, HttpHeader.CONTENT_TYPE.getValue());
         if (headerName == null) {
             return;
         }
 
-        var contentType = headers.get(headerName);
+        var contentTypes = headers.get(headerName);
+        var contentType = contentTypes.getLast();
         if (contentType == null || contentType.contains("charset=")) {
             return;
         }
@@ -78,15 +85,15 @@ final class HttpResponseWriter {
         var value = mediaType.value().toLowerCase();
         var addCharset = value.startsWith("text/") || value.contains("json") || value.contains("xml");
         if (addCharset) {
-            headers.put(headerName, contentType + "; charset=" + response.getCharset().name());
+            contentTypes.set(contentTypes.size() - 1, contentType + "; charset=" + response.getCharset().name());
         }
     }
 
-    private static boolean containsHeader(Map<String, String> headers, String expectedName) {
+    private static boolean containsHeader(Map<String, ?> headers, String expectedName) {
         return findHeaderName(headers, expectedName) != null;
     }
 
-    private static void removeHeader(Map<String, String> headers, String expectedName) {
+    private static void removeHeader(Map<String, ?> headers, String expectedName) {
         var headerName = findHeaderName(headers, expectedName);
         if (headerName != null) {
             headers.remove(headerName);
@@ -107,13 +114,19 @@ final class HttpResponseWriter {
             || statusCode == HttpStatus.NOT_MODIFIED.getCode();
     }
 
-    private static String findHeaderName(Map<String, String> headers, String expectedName) {
+    private static String findHeaderName(Map<String, ?> headers, String expectedName) {
         for (var name : headers.keySet()) {
             if (name.equalsIgnoreCase(expectedName)) {
                 return name;
             }
         }
         return null;
+    }
+
+    private static void setHeader(Map<String, List<String>> headers, String name, String value) {
+        var values = new ArrayList<String>();
+        values.add(value);
+        headers.put(name, values);
     }
 
     private static String rfc1123Now() {

@@ -51,6 +51,7 @@ public enum HttpHeader {
     REFERER("Referer"),
     HOST("Host"),
     ORIGIN("Origin"),
+    SET_COOKIE("Set-Cookie"),
     
     // Response headers
     DATE("Date"),

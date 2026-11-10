@@ -149,11 +149,11 @@ class ResponseTest {
 
     @Test
     void stringResponseTracksCharset() {
-        var response = new Response("Gr\u00fc\u00dfe", 200, MediaType.TEXT_PLAIN, StandardCharsets.UTF_8);
+        var response = new Response("Grüße", 200, MediaType.TEXT_PLAIN, StandardCharsets.UTF_8);
 
         assertFalse(response.isBinary());
         assertEquals(StandardCharsets.UTF_8, response.getCharset());
-        assertEquals("Gr\u00fc\u00dfe", response.getBody());
+        assertEquals("Grüße", response.getBody());
     }
 
     @Test
@@ -168,4 +168,19 @@ class ResponseTest {
         assertEquals("2", response.getHeaders().get("content-length"));
         assertEquals(2, response.getHeaders().size());
     }
+
+    @Test
+    void responseCanStoreRepeatedHeadersAndReplaceThem() {
+        var response = Response.ok("ok")
+            .addHeader("Set-Cookie", "first=1")
+            .addHeader("set-cookie", "second=2");
+
+        assertEquals(java.util.List.of("first=1", "second=2"), response.getHeaderValues("SET-COOKIE"));
+        assertEquals("second=2", response.getHeader("Set-Cookie"));
+        assertEquals("second=2", response.getHeaders().get("set-cookie"));
+
+        response.header("Set-Cookie", "replacement=3");
+        assertEquals(java.util.List.of("replacement=3"), response.getHeaderValues("set-cookie"));
+    }
+
 }

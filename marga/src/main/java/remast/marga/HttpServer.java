@@ -60,6 +60,10 @@ final class HttpServer {
                     if (running.get()) {
                         logger.warning("Socket exception while accepting connection: " + e.getMessage());
                     }
+                } catch (IOException e) {
+                    if (running.get()) {
+                        logger.warning("I/O exception while accepting connection: " + e.getMessage());
+                    }
                 }
             }
         } finally {

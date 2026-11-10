@@ -26,10 +26,6 @@ Header values are only checked for CR/LF; NUL and other control characters pass.
 
 Calling `shutdown()` before `run()` has bound is ignored. `serverSocket` is not `volatile` but is read from other threads in `getBoundPort()`. Shutdown does not wait for in-flight requests (`awaitTermination` is never called).
 
-## Accept loop stops on non-socket errors
-
-The accept loop only catches `SocketException`. Any other `IOException`, such as running out of file descriptors (EMFILE), terminates the server.
-
 ## Shutdown hook per router
 
 Each `HttpRouter` registers a JVM shutdown hook in its constructor that is never removed. This leaks in tests and publishes `this` before construction completes. Consider implementing `AutoCloseable` instead.

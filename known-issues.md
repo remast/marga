@@ -16,10 +16,6 @@ Clients sending `Expect: 100-continue` (e.g. curl for larger bodies) wait for a 
 
 The request line is split on spaces without checking for exactly three parts or a valid `HTTP/1.x` version (no `505`). Absolute-form targets (`http://host/path`) are not handled. The path is neither percent-decoded nor normalized, so path parameters remain encoded while query parameters are decoded.
 
-## Lenient header parsing
-
-Repeated request headers overwrite each other. Whitespace before the colon is accepted, and lines without a colon are silently dropped. Bytes are cast directly to `char`, so the request line and headers are decoded as Latin-1 and raw UTF-8 is garbled.
-
 ## Incomplete response validation
 
 Header values are only checked for CR/LF; NUL and other control characters pass. A handler returning a `1xx` status sends it as the final response.

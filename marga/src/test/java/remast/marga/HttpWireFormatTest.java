@@ -273,6 +273,61 @@ class HttpWireFormatTest {
     }
 
     @Test
+    void repeatedRequestHeadersShouldBeCombined() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
+        router.GET("/headers", request -> Response.ok(request.header("X-Value")));
+
+        var serverThread = startServer(router);
+        try {
+            var raw = sendRawUtf8(router.getPort(), "GET /headers HTTP/1.1\r\nX-Value: first\r\nx-value: second\r\nConnection: close\r\n\r\n");
+            assertEquals("first, second", responseBody(raw));
+        } finally {
+            stopServer(router, serverThread);
+        }
+    }
+
+    @Test
+    void whitespaceBeforeHeaderColonShouldReturn400() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
+        var serverThread = startServer(router);
+
+        try {
+            var raw = sendRawUtf8(router.getPort(), "GET / HTTP/1.1\r\nX-Value : invalid\r\n\r\n");
+            assertTrue(raw.startsWith("HTTP/1.1 400 Bad Request\r\n"), raw);
+        } finally {
+            stopServer(router, serverThread);
+        }
+    }
+
+    @Test
+    void headerLineWithoutColonShouldReturn400() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
+        var serverThread = startServer(router);
+
+        try {
+            var raw = sendRawUtf8(router.getPort(), "GET / HTTP/1.1\r\nMalformed header\r\n\r\n");
+            assertTrue(raw.startsWith("HTTP/1.1 400 Bad Request\r\n"), raw);
+        } finally {
+            stopServer(router, serverThread);
+        }
+    }
+
+    @Test
+    void requestLineAndHeadersShouldDecodeRawUtf8() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
+        router.GET("/café", request -> Response.ok(request.header("X-Name")));
+
+        var serverThread = startServer(router);
+        try {
+            var raw = sendRawUtf8(router.getPort(), "GET /café HTTP/1.1\r\nX-Name: José\r\nConnection: close\r\n\r\n");
+            assertTrue(raw.startsWith("HTTP/1.1 200 OK\r\n"), raw);
+            assertEquals("José", new String(responseBody(raw).getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8));
+        } finally {
+            stopServer(router, serverThread);
+        }
+    }
+
+    @Test
     void oversizedRequestLineShouldReturn414() throws Exception {
         var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
         var serverThread = startServer(router);
@@ -330,6 +385,15 @@ class HttpWireFormatTest {
 
     private static String sendRaw(int port, String request) throws IOException {
         return new String(sendRawBytes(port, request), StandardCharsets.ISO_8859_1);
+    }
+
+    private static String sendRawUtf8(int port, String request) throws IOException {
+        try (var socket = new Socket("127.0.0.1", port)) {
+            socket.setSoTimeout(5_000);
+            socket.getOutputStream().write(request.getBytes(StandardCharsets.UTF_8));
+            socket.getOutputStream().flush();
+            return new String(readAll(socket.getInputStream()), StandardCharsets.ISO_8859_1);
+        }
     }
 
     private static String responseBody(String raw) {

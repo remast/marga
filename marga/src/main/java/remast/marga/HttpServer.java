@@ -1,6 +1,7 @@
 package remast.marga;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -13,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -126,6 +128,9 @@ final class HttpServer {
             } catch (RequestHeadTooLargeException e) {
                 responseWriter.write(out, new Response("431 - Request Header Fields Too Large", HttpStatus.REQUEST_HEADER_FIELDS_TOO_LARGE), method);
                 return;
+            } catch (InvalidHeaderException e) {
+                responseWriter.write(out, Response.badRequest("400 - Bad Request"), method);
+                return;
             } catch (SocketTimeoutException e) {
                 responseWriter.write(out, new Response("408 - Request Timeout", HttpStatus.REQUEST_TIMEOUT), method);
                 return;
@@ -164,7 +169,7 @@ final class HttpServer {
     }
 
     private Map<String, String> parseHeaders(BufferedInputStream in, RequestHeadDeadline deadline) throws IOException {
-        var headers = new HashMap<String, String>();
+        var headers = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
         var bytesRead = 0;
         while (true) {
             var parsedLine = readLine(in, MAX_HEADER_BYTES - bytesRead, deadline);
@@ -177,17 +182,21 @@ final class HttpServer {
             }
 
             var colonIndex = headerLine.indexOf(':');
-            if (colonIndex > 0) {
-                var headerName = headerLine.substring(0, colonIndex).trim();
-                var headerValue = headerLine.substring(colonIndex + 1).trim();
-                headers.put(headerName, headerValue);
+            if (colonIndex <= 0) {
+                throw new InvalidHeaderException();
             }
+            var headerName = headerLine.substring(0, colonIndex);
+            if (!isValidHeaderName(headerName)) {
+                throw new InvalidHeaderException();
+            }
+            var headerValue = headerLine.substring(colonIndex + 1).trim();
+            headers.merge(headerName, headerValue, (existing, next) -> existing + ", " + next);
         }
         return headers;
     }
 
     private ParsedLine readLine(BufferedInputStream in, int maxBytes, RequestHeadDeadline deadline) throws IOException {
-        var line = new StringBuilder();
+        var line = new ByteArrayOutputStream();
         int current;
         var bytesRead = 0;
         var sawCarriageReturn = false;
@@ -209,23 +218,43 @@ final class HttpServer {
                 break;
             }
             if (sawCarriageReturn) {
-                line.append('\r');
+                line.write('\r');
                 sawCarriageReturn = false;
             }
-            line.append((char) current);
+            line.write(current);
         }
 
-        if (current == -1 && line.isEmpty()) {
+        if (current == -1 && line.size() == 0) {
             return null;
         }
 
-        return new ParsedLine(line.toString(), bytesRead);
+        return new ParsedLine(line.toString(StandardCharsets.UTF_8), bytesRead);
+    }
+
+    private static boolean isValidHeaderName(String name) {
+        if (name.isEmpty()) {
+            return false;
+        }
+        for (var i = 0; i < name.length(); i++) {
+            var character = name.charAt(i);
+            var isTokenCharacter = character >= '0' && character <= '9'
+                || character >= 'A' && character <= 'Z'
+                || character >= 'a' && character <= 'z'
+                || "!#$%&'*+-.^_`|~".indexOf(character) >= 0;
+            if (!isTokenCharacter) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private record ParsedLine(String value, int bytesRead) {
     }
 
     private static final class RequestHeadTooLargeException extends IOException {
+    }
+
+    private static final class InvalidHeaderException extends IOException {
     }
 
     private final class RequestHeadDeadline {

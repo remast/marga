@@ -100,6 +100,38 @@ class HttpWireFormatTest {
     }
 
     @Test
+    void lowercaseContentHeadersShouldNotBeDuplicatedOnWire() throws Exception {
+        var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
+        router.GET("/headers", request -> Response.ok("{}").header("content-type", "application/json").header("content-length", "999"));
+
+        var serverThread = Thread.ofVirtual().start(() -> {
+            try {
+                router.run();
+            } catch (IOException ignored) {
+            }
+        });
+
+        waitForServerPort(router);
+        try {
+            var raw = sendRaw(router.getPort(), "GET /headers HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+            var headerBlock = raw.substring(0, raw.indexOf("\r\n\r\n"));
+            var contentTypeHeaders = headerBlock.lines()
+                .filter(line -> line.regionMatches(true, 0, "content-type:", 0, "content-type:".length()))
+                .count();
+            var contentLengthHeaders = headerBlock.lines()
+                .filter(line -> line.regionMatches(true, 0, "content-length:", 0, "content-length:".length()))
+                .count();
+
+            assertEquals(1, contentTypeHeaders, headerBlock);
+            assertEquals(1, contentLengthHeaders, headerBlock);
+            assertTrue(headerBlock.toLowerCase().contains("content-length: 2"), headerBlock);
+        } finally {
+            router.shutdown();
+            serverThread.join(2_000);
+        }
+    }
+
+    @Test
     void noContentAndNotModifiedResponsesShouldNotWriteBodies() throws Exception {
         var router = new HttpRouter(Config.builder().host("127.0.0.1").port(0).readTimeoutMs(3_000).build());
         router.GET("/no-content", request -> new Response("ignored", HttpStatus.NO_CONTENT));

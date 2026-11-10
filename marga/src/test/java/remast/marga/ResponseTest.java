@@ -155,4 +155,17 @@ class ResponseTest {
         assertEquals(StandardCharsets.UTF_8, response.getCharset());
         assertEquals("Gr\u00fc\u00dfe", response.getBody());
     }
+
+    @Test
+    void responseHeadersAreCaseInsensitive() {
+        var response = Response.ok("{}")
+            .header("content-type", "application/json")
+            .header("CONTENT-LENGTH", "2");
+
+        assertEquals("application/json", response.getHeader("Content-Type"));
+        assertEquals("application/json", response.getHeader("CONTENT-TYPE"));
+        assertEquals(MediaType.APPLICATION_JSON, response.getMediaType());
+        assertEquals("2", response.getHeaders().get("content-length"));
+        assertEquals(2, response.getHeaders().size());
+    }
 }

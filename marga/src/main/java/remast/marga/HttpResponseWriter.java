@@ -6,15 +6,16 @@ import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 final class HttpResponseWriter {
     private static final String CRLF = "\r\n";
 
     void write(OutputStream outputStream, Response response, String requestMethod) throws IOException {
         var bodyBytes = response.getBodyBytes();
-        var headers = new HashMap<>(response.getHeaders());
+        var headers = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
+        headers.putAll(response.getHeaders());
 
         if (!containsHeader(headers, HttpHeader.CONTENT_TYPE.getValue()) && response.getMediaType() != null) {
             headers.put(HttpHeader.CONTENT_TYPE.getValue(), response.getMediaType().getValue());

@@ -3,8 +3,8 @@ package remast.marga;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class Response {
     private final byte[] body;
@@ -42,7 +42,7 @@ public class Response {
         this.body = body == null ? new byte[0] : body.getBytes(this.charset);
         this.binary = false;
         this.statusCode = statusCode;
-        this.headers = new HashMap<>();
+        this.headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         if (mediaType != null) {
             this.headers.put(HttpHeader.CONTENT_TYPE.getValue(), mediaType.getValue());
         }
@@ -57,7 +57,7 @@ public class Response {
         this.body = body == null ? new byte[0] : Arrays.copyOf(body, body.length);
         this.binary = true;
         this.statusCode = statusCode;
-        this.headers = new HashMap<>();
+        this.headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         if (mediaType != null) {
             this.headers.put(HttpHeader.CONTENT_TYPE.getValue(), mediaType.getValue());
         }
@@ -100,7 +100,9 @@ public class Response {
     }
     
     public Map<String, String> getHeaders() {
-        return new HashMap<>(headers);
+        var copy = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
+        copy.putAll(headers);
+        return copy;
     }
     
     public Response header(String name, String value) {

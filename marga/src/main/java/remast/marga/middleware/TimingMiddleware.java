@@ -2,6 +2,7 @@ package remast.marga.middleware;
 
 import remast.marga.RequestHandler;
 
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
@@ -16,7 +17,7 @@ public class TimingMiddleware {
      * Creates a timing middleware function.
      * @return A function that takes a RequestHandler and returns a RequestHandler with timing
      */
-    public static java.util.function.Function<RequestHandler, RequestHandler> create() {
+    public static Function<RequestHandler, RequestHandler> create() {
         return handler -> request -> {
             var startTime = System.currentTimeMillis();
             var response = handler.handle(request);

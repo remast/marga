@@ -2,6 +2,7 @@ package remast.marga.middleware;
 
 import remast.marga.RequestHandler;
 
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
@@ -15,7 +16,7 @@ public class LoggingMiddleware {
      * Creates a logging middleware function.
      * @return A function that takes a RequestHandler and returns a RequestHandler with logging
      */
-    public static java.util.function.Function<RequestHandler, RequestHandler> create() {
+    public static Function<RequestHandler, RequestHandler> create() {
         return handler -> request -> {
             logger.info(String.format("%s %s", 
                 request.getMethod(), request.getPath()));

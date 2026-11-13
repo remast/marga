@@ -1,0 +1,7 @@
+### Marga Spring Boot example
+
+### Homepage
+GET http://localhost:8081/
+
+### Greeting handler backed by an injected Spring service
+GET http://localhost:8081/greet/Spring

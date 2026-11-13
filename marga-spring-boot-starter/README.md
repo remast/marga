@@ -1,6 +1,6 @@
 # Marga Spring Boot Starter
 
-The starter registers Spring-managed beans that implement Marga's `RequestHandler` interface and are annotated with `@MargaRoute`. Handlers receive Marga `Request` objects and return Marga `Response` objects; Spring services can be injected into handlers normally.
+The starter registers routes from `@MargaRoute` annotations on Spring-managed beans. You can annotate a `RequestHandler` class or individual public methods. Annotated methods receive one Marga `Request` and return a Marga `Response`; Spring services can be injected normally.
 
 ```java
 @Component
@@ -20,6 +20,18 @@ class GreetHandler implements RequestHandler {
 ```
 
 Routes use Marga's `${name}` path parameter format. `@MargaRoute` is repeatable, so a handler can register multiple paths. The starter configures and starts Marga as part of the Spring application lifecycle.
+
+You can also put the annotation directly on a method, without implementing `RequestHandler`:
+
+```java
+@Component
+class GreetHandler {
+    @MargaRoute(method = "POST", path = "/greet/${name}", description = "Greet a person")
+    public Response handle(Request request) {
+        return Response.ok("Hello, " + request.pathParam("name") + "!");
+    }
+}
+```
 
 Configure the server with these Spring properties:
 

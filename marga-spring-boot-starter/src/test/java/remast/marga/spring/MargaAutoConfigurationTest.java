@@ -1,7 +1,9 @@
 package remast.marga.spring;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -42,6 +44,35 @@ class MargaAutoConfigurationTest {
         });
     }
 
+    @Test
+    void registersAnnotatedMethodsOnBeansThatDoNotImplementRequestHandler() {
+        contextRunner.run(context -> {
+            assertNull(context.getStartupFailure());
+            var response = context.getBean(HttpRouter.class).handleRequest("POST", "/method-greet/Marga");
+
+            assertEquals(200, response.getStatusCode());
+            assertEquals("Hello, Marga!", response.getBody());
+        });
+    }
+
+    @Test
+    void registersRepeatableRoutesOnMethod() {
+        contextRunner.run(context -> {
+            var router = context.getBean(HttpRouter.class);
+
+            assertEquals("method hello", router.handleRequest("GET", "/method-hello").getBody());
+            assertEquals("method hello", router.handleRequest("GET", "/method-hi").getBody());
+        });
+    }
+
+    @Test
+    void rejectsAnnotatedMethodsWithUnsupportedSignatures() {
+        contextRunner.withBean("invalidRouteHandler", InvalidRouteHandler.class).run(context -> {
+            assertNotNull(context.getStartupFailure());
+            assertTrue(context.getStartupFailure().getMessage().contains("must accept one Request and return a Response"));
+        });
+    }
+
     @Configuration(proxyBeanMethods = false)
     static class HandlerConfiguration {
         @Bean
@@ -57,6 +88,16 @@ class MargaAutoConfigurationTest {
         @Bean
         RequestHandler greetHandler(GreetingService greetingService) {
             return new GreetHandler(greetingService);
+        }
+
+        @Bean
+        MethodGreetHandler methodGreetHandler(GreetingService greetingService) {
+            return new MethodGreetHandler(greetingService);
+        }
+
+        @Bean
+        MethodHelloHandler methodHelloHandler() {
+            return new MethodHelloHandler();
         }
     }
 
@@ -85,6 +126,34 @@ class MargaAutoConfigurationTest {
         @Override
         public Response handle(Request request) {
             return Response.ok(greetingService.greet(request.pathParam("name")));
+        }
+    }
+
+    static class MethodGreetHandler {
+        private final GreetingService greetingService;
+
+        MethodGreetHandler(GreetingService greetingService) {
+            this.greetingService = greetingService;
+        }
+
+        @MargaRoute(method = "POST", path = "/method-greet/${name}")
+        public Response greet(Request request) {
+            return Response.ok(greetingService.greet(request.pathParam("name")));
+        }
+    }
+
+    static class MethodHelloHandler {
+        @MargaRoute(path = "/method-hello")
+        @MargaRoute(path = "/method-hi")
+        public Response hello(Request request) {
+            return Response.ok("method hello");
+        }
+    }
+
+    static class InvalidRouteHandler {
+        @MargaRoute(path = "/invalid")
+        public String invalid() {
+            return "invalid";
         }
     }
 }

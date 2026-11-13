@@ -1,6 +1,6 @@
 # Marga Spring Boot Example
 
-This application uses the Marga Spring Boot starter. The starter registers Spring-managed beans that implement `RequestHandler` and have one or more `@MargaRoute` annotations.
+This application uses the Marga Spring Boot starter. The starter registers routes from `@MargaRoute` annotations on Spring-managed `RequestHandler` beans or directly on handler methods.
 
 ```sh
 mvn -pl example-spring -am package

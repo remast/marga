@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
+@Target({ ElementType.TYPE, ElementType.METHOD })
 @Repeatable(MargaRoutes.class)
 public @interface MargaRoute {
     String method() default "GET";

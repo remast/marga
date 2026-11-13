@@ -107,6 +107,10 @@ Check out the `example` directory for complete examples including:
 - Custom handlers
 - Error handling
 
+### Spring Boot Integration
+
+The `marga-spring-boot-starter` module registers Spring beans implementing Marga's `RequestHandler` interface when annotated with `@MargaRoute`. See [example-spring](example-spring/README.md) for a runnable Spring Boot sample with an injected service.
+
 ---
 
 **Ready to build something amazing?** Start with Marga and experience the joy of simple, efficient HTTP routing in Java! 🎉

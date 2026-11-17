@@ -11,10 +11,12 @@ import remast.marga.spring.MargaRoute;
 @Component
 @MargaRoute(path = "/", description = "Welcome to Marga with Spring Boot")
 public class HomeHandler implements RequestHandler {
+
     @Override
     public Response handle(Request request) {
         return Response.ok("<html><body><h1>Welcome to Marga + Spring Boot!</h1>"
                 + "<p>Try <a href='/greet/Spring'>/greet/Spring</a></p></body></html>")
                 .mediaType(MediaType.TEXT_HTML);
     }
+
 }

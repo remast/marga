@@ -9,6 +9,7 @@ import remast.marga.spring.MargaRoute;
 
 @Component
 public class GreetHandler {
+
     private final GreetingService greetings;
 
     public GreetHandler(GreetingService greetings) {

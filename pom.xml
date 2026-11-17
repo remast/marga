@@ -26,7 +26,9 @@
 
   <modules>
     <module>marga</module>
+    <module>marga-spring-boot-starter</module>
     <module>example</module>
+    <module>example-spring</module>
   </modules>
 
   <properties>
@@ -49,6 +51,12 @@
       <dependency>
         <groupId>io.github.remast</groupId>
         <artifactId>marga</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>io.github.remast</groupId>
+        <artifactId>marga-spring-boot-starter</artifactId>
         <version>${project.version}</version>
       </dependency>
 
